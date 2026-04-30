@@ -1,0 +1,1408 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="color-scheme" content="light"/>
+<title>ADS · Portal Administradores</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+html { color-scheme: light; background: #FBF9F4; }
+:root {
+  --gold: #A8894A; --gold-deep: #8B6F38; --gold-soft: #C9A76A;
+  --gold-tint: #F4ECDB; --gold-tint-2: #FAF6EC;
+  --bg: #FBF9F4; --bg-soft: #F5F1E8; --surface: #FFFFFF;
+  --line: #E8E2D2; --line-soft: #EFE9D9;
+  --ink-1: #1A1611; --ink-2: #5C5544; --ink-3: #948B73;
+  --ok: #5C8A4A; --ok-bg: #EAF1E0; --warn: #B8862A; --warn-bg: #F8EFD6;
+  --danger: #B5453A; --danger-bg: #F6E1DC; --info: #4D6A8A; --info-bg: #E0E8F1;
+  --serif: 'Cormorant Garamond', Georgia, serif;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --radius: 10px; --radius-sm: 6px;
+  --shadow-sm: 0 1px 2px rgba(34,28,15,0.04);
+  --shadow: 0 2px 8px rgba(34,28,15,0.04), 0 1px 2px rgba(34,28,15,0.04);
+  --sidebar-w: 264px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { font-family: var(--sans); font-size: 14px; color: var(--ink-1); background: var(--bg); line-height: 1.5; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+button { font-family: inherit; cursor: pointer; }
+input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+.ads-app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; color: var(--ink-1); background: var(--bg); font-family: var(--sans); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+.ads-loading-screen, .ads-error-screen { color: var(--ink-1); font-family: var(--sans); }
+body::before { content: ""; position: fixed; inset: 0; pointer-events: none; opacity: 0.04; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='52' viewBox='0 0 60 52'><polygon points='15,0 30,8.66 30,25.98 15,34.64 0,25.98 0,8.66' fill='none' stroke='%23A8894A' stroke-width='0.6'/><polygon points='45,17.32 60,25.98 60,43.3 45,51.96 30,43.3 30,25.98' fill='none' stroke='%23A8894A' stroke-width='0.6'/></svg>"); z-index: 0; }
+.ads-sidebar { position: sticky; top: 0; height: 100vh; background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; z-index: 10; }
+.ads-nav-section { padding: 14px 14px 8px; font-size: 10px; letter-spacing: 1.4px; font-weight: 500; color: var(--ink-3); text-transform: uppercase; }
+.ads-nav-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 14px; background: none; border: none; border-radius: 8px; font-size: 14px; color: var(--ink-2); text-align: left; transition: background 120ms, color 120ms; }
+.ads-nav-item:hover { background: var(--bg-soft); color: var(--ink-1); }
+.ads-nav-item.active { background: var(--gold-tint); color: var(--gold-deep); font-weight: 500; }
+.ads-nav-item.active svg { color: var(--gold-deep); }
+.ads-nav-item svg { color: var(--ink-3); flex-shrink: 0; }
+.ads-nav-item span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ads-nav-sub { padding-left: 18px; font-size: 13px; }
+.ads-nav-sub.active { background: var(--bg-soft); color: var(--ink-1); }
+.ads-nav-badge { background: var(--danger); color: white; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 10px; min-width: 18px; text-align: center; }
+.ads-nav-count { font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.ads-main { display: flex; flex-direction: column; min-width: 0; position: relative; }
+.ads-header { position: sticky; top: 0; display: flex; align-items: center; gap: 18px; padding: 14px 32px; background: rgba(251, 249, 244, 0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); z-index: 5; }
+.ads-search { width: 100%; padding: 10px 14px 10px 40px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; outline: none; font-size: 13px; transition: border-color 120ms, box-shadow 120ms; }
+.ads-search:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(168,137,74,0.12); }
+.ads-context-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--gold-tint); border-radius: 14px; color: var(--gold-deep); font-size: 12px; font-weight: 500; }
+.ads-icon-btn { position: relative; width: 38px; height: 38px; background: none; border: none; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--ink-2); transition: background 120ms; }
+.ads-icon-btn:hover { background: var(--bg-soft); color: var(--ink-1); }
+.ads-icon-dot { position: absolute; top: 8px; right: 9px; width: 7px; height: 7px; background: var(--danger); border-radius: 50%; border: 2px solid var(--bg); }
+.ads-icon-btn-sm { width: 30px; height: 30px; background: none; border: 1px solid var(--line); border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
+.ads-icon-btn-sm:hover { background: var(--gold-tint); color: var(--gold-deep); border-color: var(--gold-soft); }
+.ads-profile-btn { display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 6px; background: none; border: 1px solid var(--line); border-radius: 24px; transition: background 120ms; }
+.ads-profile-btn:hover { background: var(--bg-soft); }
+.ads-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--gold-soft), var(--gold-deep)); color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; flex-shrink: 0; }
+.ads-avatar-lg { width: 64px; height: 64px; font-size: 22px; font-family: var(--serif); }
+.ads-page { padding: 32px 40px 48px; display: flex; flex-direction: column; gap: 22px; position: relative; z-index: 1; }
+.ads-pageheader { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: 4px; flex-wrap: wrap; }
+.ads-eyebrow { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold-deep); font-weight: 500; margin-bottom: 8px; }
+.ads-h1 { font-family: var(--serif); font-size: 38px; font-weight: 500; margin: 0; color: var(--ink-1); letter-spacing: -0.5px; line-height: 1.1; }
+.ads-h2 { font-family: var(--serif); font-size: 24px; font-weight: 500; margin: 0; color: var(--ink-1); letter-spacing: -0.3px; }
+.ads-pagedesc { font-size: 14px; color: var(--ink-2); margin: 8px 0 0; max-width: 580px; }
+.ads-back { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; padding: 0; font-size: 13px; color: var(--ink-3); align-self: flex-start; }
+.ads-back:hover { color: var(--gold-deep); }
+.ads-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow-sm); }
+.ads-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+.ads-card-title { font-family: var(--serif); font-size: 20px; font-weight: 500; margin: 0; color: var(--ink-1); letter-spacing: -0.2px; }
+.ads-card-subtitle { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+.ads-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.ads-grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+.ads-kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; text-align: left; box-shadow: var(--shadow-sm); transition: border-color 120ms, transform 120ms; }
+button.ads-kpi { cursor: pointer; }
+button.ads-kpi:hover { border-color: var(--gold-soft); transform: translateY(-1px); }
+.ads-kpi-danger { border-color: rgba(181,69,58,0.25); background: linear-gradient(180deg, var(--danger-bg) 0%, var(--surface) 60%); }
+.ads-kpi-label { font-size: 12px; color: var(--ink-3); letter-spacing: 0.3px; }
+.ads-kpi-value { font-family: var(--serif); font-size: 30px; font-weight: 500; color: var(--ink-1); margin-top: 6px; letter-spacing: -0.4px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.ads-kpi-sub { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--ink-3); margin-top: 8px; font-weight: 500; }
+.ads-toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.ads-input { width: 100%; padding: 9px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; outline: none; font-size: 13px; }
+.ads-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(168,137,74,0.12); }
+.ads-select { padding: 9px 32px 9px 12px; background: var(--surface) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23948B73' stroke-width='2'><path d='m6 9 6 6 6-6'/></svg>") right 12px center/12px no-repeat; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; outline: none; appearance: none; -webkit-appearance: none; }
+.ads-select:focus { border-color: var(--gold); }
+.ads-segmented { display: inline-flex; background: var(--bg-soft); border-radius: 8px; padding: 3px; gap: 2px; }
+.ads-segmented button { padding: 6px 14px; background: none; border: none; border-radius: 6px; font-size: 12px; color: var(--ink-2); font-weight: 500; transition: background 120ms, color 120ms; }
+.ads-segmented button:hover { color: var(--ink-1); }
+.ads-segmented button.active { background: var(--surface); color: var(--gold-deep); box-shadow: var(--shadow-sm); }
+.ads-btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-1); font-size: 13px; font-weight: 500; transition: all 120ms; }
+.ads-btn:hover { border-color: var(--gold-soft); }
+.ads-btn-primary { background: var(--gold-deep); border-color: var(--gold-deep); color: white; }
+.ads-btn-primary:hover:not(:disabled) { background: var(--ink-1); border-color: var(--ink-1); }
+.ads-btn-primary:disabled { opacity: 0.6; cursor: progress; }
+.ads-btn-ghost { background: var(--surface); }
+.ads-link { display: inline-flex; align-items: center; gap: 4px; background: none; border: none; padding: 0; font-size: 13px; color: var(--gold-deep); font-weight: 500; }
+.ads-link:hover { color: var(--ink-1); }
+.ads-link-inline { background: none; border: none; padding: 0; color: var(--gold-deep); font-weight: 500; cursor: pointer; }
+.ads-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ads-table th { text-align: left; padding: 14px 16px; font-size: 11px; font-weight: 500; color: var(--ink-3); letter-spacing: 0.5px; text-transform: uppercase; background: var(--bg-soft); border-bottom: 1px solid var(--line); white-space: nowrap; }
+.ads-table td { padding: 14px 16px; border-bottom: 1px solid var(--line-soft); color: var(--ink-1); vertical-align: middle; }
+.ads-table tr:last-child td { border-bottom: none; }
+.ads-table-sm td, .ads-table-sm th { padding: 10px 12px; }
+.ads-row-clickable { cursor: pointer; transition: background 100ms; }
+.ads-row-clickable:hover { background: var(--gold-tint-2); }
+.ads-badge { display: inline-flex; align-items: center; padding: 3px 9px; font-size: 11px; font-weight: 500; border-radius: 12px; letter-spacing: 0.3px; white-space: nowrap; }
+.ads-badge-ok { background: var(--ok-bg); color: var(--ok); }
+.ads-badge-warn { background: var(--warn-bg); color: var(--warn); }
+.ads-badge-danger { background: var(--danger-bg); color: var(--danger); }
+.ads-badge-info { background: var(--info-bg); color: var(--info); }
+.ads-badge-muted { background: var(--bg-soft); color: var(--ink-3); }
+.ads-tarifa { display: inline-block; padding: 3px 8px; background: var(--bg-soft); border: 1px solid var(--line); border-radius: 4px; font-family: var(--mono); font-size: 11px; color: var(--ink-2); letter-spacing: 0.3px; }
+.ads-mini-list { display: flex; flex-direction: column; }
+.ads-mini-row { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line-soft); background: none; border-left: none; border-right: none; border-top: none; text-align: left; width: 100%; transition: background 120ms; cursor: pointer; }
+.ads-mini-row:last-child { border-bottom: none; }
+.ads-mini-row:hover { background: var(--gold-tint-2); }
+.ads-notif-dot { width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ads-notif-alerta, .ads-notif-vencimiento { background: var(--danger-bg); color: var(--danger); }
+.ads-notif-factura { background: var(--gold-tint); color: var(--gold-deep); }
+.ads-notif-contrato { background: var(--info-bg); color: var(--info); }
+.ads-notif-info { background: var(--bg-soft); color: var(--ink-2); }
+.ads-notif-row { display: flex; gap: 14px; align-items: flex-start; padding: 18px 22px; border-bottom: 1px solid var(--line-soft); }
+.ads-notif-row:last-child { border-bottom: none; }
+.ads-notif-row.unread { background: var(--gold-tint-2); }
+.ads-summary-strip { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.ads-summary-strip > div { padding: 16px 22px; border-right: 1px solid var(--line); }
+.ads-summary-strip > div:last-child { border-right: none; }
+.ads-summary-strip span { display: block; font-size: 11px; color: var(--ink-3); letter-spacing: 0.5px; text-transform: uppercase; }
+.ads-summary-strip b { display: block; font-family: var(--serif); font-size: 22px; font-weight: 500; color: var(--ink-1); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.ads-dl { margin: 0; display: flex; flex-direction: column; }
+.ads-dl > div { display: grid; grid-template-columns: 160px 1fr; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
+.ads-dl > div:last-child { border-bottom: none; }
+.ads-dl dt { font-size: 12px; color: var(--ink-3); margin: 0; }
+.ads-dl dd { font-size: 13px; color: var(--ink-1); margin: 0; font-weight: 500; }
+.ads-price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.ads-price-grid > div { padding: 14px 16px; background: var(--bg-soft); border-radius: 8px; }
+.ads-price-label { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.5px; }
+.ads-price-val { font-family: var(--serif); font-size: 22px; color: var(--gold-deep); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.ads-price-val span { font-family: var(--sans); font-size: 11px; color: var(--ink-3); margin-left: 6px; font-weight: 400; }
+.ads-supply-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.ads-supply-card { text-align: left; padding: 18px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; transition: border-color 120ms, transform 120ms, box-shadow 120ms; }
+.ads-supply-card:hover { border-color: var(--gold-soft); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(168,137,74,0.08); }
+.ads-modal-overlay { position: fixed; inset: 0; background: rgba(26, 22, 17, 0.45); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; padding: 24px; z-index: 100; animation: fadein 180ms ease; }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+.ads-modal { background: var(--surface); border-radius: 12px; width: 100%; max-width: 760px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 24px 60px rgba(0,0,0,0.2); animation: pop 200ms cubic-bezier(.2,.7,.3,1); }
+@keyframes pop { from { transform: translateY(8px) scale(.98); opacity: 0; } to { transform: none; opacity: 1; } }
+.ads-modal-head { display: flex; justify-content: space-between; align-items: flex-start; padding: 22px 26px; border-bottom: 1px solid var(--line); }
+.ads-modal-body { padding: 26px; overflow-y: auto; flex: 1; background: var(--bg-soft); }
+.ads-modal-foot { display: flex; justify-content: space-between; align-items: center; padding: 16px 26px; border-top: 1px solid var(--line); }
+.ads-invoice-doc { background: white; border: 1px solid var(--line); border-radius: 8px; padding: 32px; }
+.ads-invoice-doc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; padding-bottom: 22px; border-bottom: 2px solid var(--gold); margin-bottom: 22px; }
+.ads-invoice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; padding-bottom: 22px; border-bottom: 1px solid var(--line); margin-bottom: 22px; }
+.ads-invoice-label { font-size: 10px; letter-spacing: 1.4px; color: var(--gold-deep); text-transform: uppercase; margin-bottom: 6px; }
+.ads-invoice-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ads-invoice-table th, .ads-invoice-table td { padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
+.ads-invoice-table th { text-align: left; font-size: 10px; letter-spacing: 1.4px; color: var(--gold-deep); text-transform: uppercase; font-weight: 500; }
+.ads-invoice-table tfoot td { padding: 14px 0; font-family: var(--serif); font-size: 22px; font-weight: 500; border-bottom: none; border-top: 2px solid var(--gold); color: var(--ink-1); }
+.ads-toggle { position: relative; width: 38px; height: 22px; background: var(--line); border-radius: 11px; cursor: pointer; transition: background 160ms; flex-shrink: 0; }
+.ads-toggle span { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: white; transition: left 160ms; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+.ads-toggle.on { background: var(--gold-deep); }
+.ads-toggle.on span { left: 19px; }
+[data-primary="azul"]      { --gold: #2D5278; --gold-deep: #1F3B59; --gold-soft: #5C82A8; --gold-tint: #E0E8F1; --gold-tint-2: #EFF3F8; }
+[data-primary="verde"]     { --gold: #4F7B4A; --gold-deep: #355C32; --gold-soft: #7BA476; --gold-tint: #E5EEE3; --gold-tint-2: #F0F5EE; }
+[data-primary="terracota"] { --gold: #B5613A; --gold-deep: #8D472A; --gold-soft: #D38967; --gold-tint: #F5E2D5; --gold-tint-2: #FAEFE6; }
+[data-primary="grafito"]   { --gold: #3D3D3D; --gold-deep: #1F1F1F; --gold-soft: #6F6F6F; --gold-tint: #E8E8E8; --gold-tint-2: #F2F2F2; }
+@media (max-width: 1100px) { .ads-kpi-grid { grid-template-columns: repeat(2, 1fr); } .ads-grid-2-1 { grid-template-columns: 1fr; } .ads-summary-strip { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 820px)  { .ads-app { grid-template-columns: 1fr; } .ads-sidebar { display: none; } .ads-page { padding: 24px 16px 40px; } .ads-header { padding: 12px 16px; } .ads-h1 { font-size: 28px; } .ads-modal { max-height: 95vh; } .ads-invoice-doc { padding: 20px; } .ads-invoice-grid { grid-template-columns: 1fr; } .ads-dl > div { grid-template-columns: 1fr; gap: 4px; } .ads-modal-foot { flex-wrap: wrap; gap: 10px; } }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 5px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-soft); }
+
+/* Loading + Error screens */
+.ads-loading-screen, .ads-error-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; background: var(--bg); position: relative; z-index: 1; }
+.ads-loading-spinner { width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--gold-deep); animation: spin 800ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.ads-loading-msg { font-family: var(--serif); font-size: 18px; color: var(--ink-2); }
+.ads-error-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--danger-bg); color: var(--danger); display: flex; align-items: center; justify-content: center; }
+.ads-error-title { font-family: var(--serif); font-size: 24px; color: var(--ink-1); margin: 0; }
+.ads-error-detail { font-size: 13px; color: var(--ink-2); max-width: 440px; text-align: center; line-height: 1.6; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; font-family: var(--mono); }
+</style>
+</head>
+<body>
+
+<!-- ─────────────────────────────────────────────────────────────────
+     PORTAL ADS · ADMINISTRADORES DE FINCAS
+     Pensado para servirse desde GitHub Pages (o similar) y embeberse
+     en un iframe en cada página Odoo del AAFF.
+     La aaff_key se pasa en la query string: /?key=XXXX
+─────────────────────────────────────────────────────────────────── -->
+
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+
+<script type="text/babel">
+/* ═══════════════════════════════════════════════════════════════════
+   1. CONFIG + CONSTANTS
+   ═══════════════════════════════════════════════════════════════════ */
+const API_BASE = "https://tunuevaenergia.com/webhook";
+
+const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const MESES_LARGOS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+/* ═══════════════════════════════════════════════════════════════════
+   2. HELPERS (formato + lookups sobre window.*)
+   ═══════════════════════════════════════════════════════════════════ */
+function formatEUR(n) { return new Intl.NumberFormat("es-ES",{style:"currency",currency:"EUR",minimumFractionDigits:2}).format(Number(n)||0); }
+function formatKWh(n) { return new Intl.NumberFormat("es-ES",{maximumFractionDigits:0}).format(Number(n)||0)+" kWh"; }
+function formatNum(n,dec=0) { return new Intl.NumberFormat("es-ES",{minimumFractionDigits:dec,maximumFractionDigits:dec}).format(Number(n)||0); }
+function formatFecha(iso) {
+  if (!iso || iso==="0000-00-00" || iso==="1900-01-01") return "—";
+  const d = new Date(iso);
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString("es-ES",{day:"2-digit",month:"short",year:"numeric"});
+}
+function getComunidad(id) { return (window.COMUNIDADES||[]).find(c=>c.id===id); }
+function getSuministro(id) { return (window.SUMINISTROS||[]).find(s=>s.id===id); }
+function getSuministrosByComunidad(id) { return (window.SUMINISTROS||[]).filter(s=>s.comunidadId===id); }
+function getFacturasBySuministro(id) { return (window.FACTURAS||[]).filter(f=>f.suministroId===id); }
+function getContratoBySuministro(id) { return (window.CONTRATOS||[]).find(c=>c.suministroId===id); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   3. DATA BOOTSTRAP — fetch a /api/me + /api/contratos + /api/facturas
+   ═══════════════════════════════════════════════════════════════════ */
+async function apiGet(path, headers) {
+  const r = await fetch(`${API_BASE}${path}`, { headers });
+  let body;
+  try { body = await r.json(); }
+  catch (e) { throw new Error(`${path}: respuesta no es JSON (HTTP ${r.status})`); }
+  if (!r.ok || body.ok === false) {
+    throw new Error(body.error || `Error ${r.status} en ${path}`);
+  }
+  return body;
+}
+
+function getAaffKey() {
+  const params = new URLSearchParams(window.location.search);
+  return (params.get("key") || "").trim();
+}
+
+async function bootstrapData() {
+  const aaffKey = getAaffKey();
+  if (!aaffKey) {
+    throw new Error('Falta el parámetro ?key=… en la URL. El portal espera la aaff_key como query param.');
+  }
+  if (!/^[A-Za-z0-9]{20,40}$/.test(aaffKey)) {
+    throw new Error('El parámetro key tiene formato inválido (debe ser alfanumérico, 20-40 caracteres).');
+  }
+  const headers = { "X-AAFF-Key": aaffKey };
+
+  // 3 llamadas en paralelo
+  const [me, contratosRes, facturasRes] = await Promise.all([
+    apiGet("/api/me", headers),
+    apiGet("/api/contratos", headers),
+    apiGet("/api/facturas?limit=500", headers),
+  ]);
+
+  // Branding del AAFF (champagne es la paleta default; otras se aplican via data-primary)
+  const colorPrim = me.branding && me.branding.color_primario;
+  if (colorPrim && colorPrim !== "champagne") {
+    document.body.setAttribute("data-primary", colorPrim);
+  }
+
+  // ADMIN — info de cabecera. Como no tenemos un usuario humano (la auth la hace Odoo),
+  // mostramos la info del AAFF/canal en el avatar.
+  const ADMIN = {
+    nombre: me.admin.nombre || me.branding.nombre || "AAFF",
+    email: me.admin.email || "",
+    iniciales: me.admin.iniciales || "AA",
+    empresa: me.admin.nombre || "",
+    numeroColegiado: "",
+    telefono: "",
+  };
+
+  const FACTURAS = facturasRes.FACTURAS || [];
+
+  // Derivamos costeAnual de cada suministro a partir de las facturas del último año.
+  const today = new Date();
+  const oneYearAgo = new Date(today.getFullYear()-1, today.getMonth(), today.getDate());
+  const costePerSuministro = {};
+  FACTURAS.forEach(f => {
+    if (!f.fechaEmision) return;
+    const d = new Date(f.fechaEmision);
+    if (isNaN(d) || d < oneYearAgo) return;
+    costePerSuministro[f.suministroId] = (costePerSuministro[f.suministroId] || 0) + (Number(f.importe)||0);
+  });
+
+  const SUMINISTROS = (contratosRes.SUMINISTROS || []).map(s => ({
+    ...s,
+    costeAnual: +(costePerSuministro[s.id] || 0).toFixed(2),
+  }));
+
+  // Comunidades: añadimos vecinos:0 (no expuesto por Nemon, oculto en UI cuando vale 0).
+  const COMUNIDADES = (contratosRes.COMUNIDADES || []).map(c => ({ ...c, vecinos: 0 }));
+
+  // Contratos: añadimos placeholders de precios (Nemon no los expone aquí; pendiente).
+  const CONTRATOS = (contratosRes.CONTRATOS || []).map(c => ({
+    ...c,
+    precioEnergia: { p1: null, p2: null, p3: null },
+    precioPotencia: null,
+  }));
+
+  const TARIFAS = [...new Set(SUMINISTROS.map(s=>s.tarifa).filter(Boolean))].sort();
+  const NOTIFICACIONES = []; // pendiente: webhooks Nemon
+
+  Object.assign(window, {
+    ADMIN, COMUNIDADES, SUMINISTROS, CONTRATOS, FACTURAS, NOTIFICACIONES, TARIFAS,
+    BRANDING: me.branding,
+    MESES, MESES_LARGOS,
+    getComunidad, getSuministro, getSuministrosByComunidad, getFacturasBySuministro, getContratoBySuministro,
+    formatEUR, formatKWh, formatNum, formatFecha,
+    CURRENT_YEAR: today.getFullYear(),
+    PREVIOUS_YEAR: today.getFullYear()-1,
+    CURRENT_MONTH: today.getMonth(), // 0-11
+  });
+}
+
+// Descarga del PDF: abre en una nueva pestaña con la cabecera de auth.
+async function downloadInvoicePdf(filename) {
+  const aaffKey = getAaffKey();
+  const url = `${API_BASE}/api/factura/pdf?filename=${encodeURIComponent(filename)}`;
+  const r = await fetch(url, { headers: { "X-AAFF-Key": aaffKey } });
+  if (!r.ok) {
+    let msg = `HTTP ${r.status}`;
+    try { const j = await r.json(); if (j.error) msg = j.error; } catch (_) {}
+    throw new Error(msg);
+  }
+  const blob = await r.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = filename.split("/").pop() || "factura.pdf";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+}
+
+window.bootstrapData = bootstrapData;
+window.downloadInvoicePdf = downloadInvoicePdf;
+
+/* ═══════════════════════════════════════════════════════════════════
+   4. ICONS + SHARED COMPONENTS
+   ═══════════════════════════════════════════════════════════════════ */
+const Icon = {
+  dashboard:(p)=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>),
+  contract:(p)=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9 13h6M9 17h4"/></svg>),
+  invoice:(p)=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}><path d="M5 3h11l3 3v15H5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>),
+  supply:(p)=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg>),
+  bell:(p)=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>),
+  user:(p)=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>),
+  search:(p)=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...p}><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>),
+  download:(p)=>(<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...p}><path d="M12 3v13m0 0 5-5m-5 5-5-5"/><path d="M3 21h18"/></svg>),
+  filter:(p)=>(<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...p}><path d="M3 5h18l-7 9v6l-4-2v-4z"/></svg>),
+  close:(p)=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...p}><path d="m6 6 12 12M18 6 6 18"/></svg>),
+  chevron:(p)=>(<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><path d="m9 18 6-6-6-6"/></svg>),
+  arrowUp:(p)=>(<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><path d="M12 19V5m0 0-7 7m7-7 7 7"/></svg>),
+  arrowDown:(p)=>(<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><path d="M12 5v14m0 0 7-7m-7 7-7-7"/></svg>),
+  check:(p)=>(<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" {...p}><path d="m5 12 5 5L20 7"/></svg>),
+  alert:(p)=>(<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...p}><path d="M12 3 2 21h20z"/><path d="M12 9v5M12 18v.01"/></svg>),
+  menu:(p)=>(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...p}><path d="M3 6h18M3 12h18M3 18h18"/></svg>),
+  logout:(p)=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>),
+  settings:(p)=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>),
+  building:(p)=>(<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}><path d="M4 21V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16"/><path d="M2 21h20M9 7h2M9 11h2M9 15h2M13 7h2M13 11h2M13 15h2M9 21v-4h6v4"/></svg>),
+  print:(p)=>(<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...p}><path d="M6 9V3h12v6M6 18H3v-6h18v6h-3M6 14h12v7H6z"/></svg>),
+  email:(p)=>(<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...p}><rect x="2" y="5" width="20" height="14" rx="2"/><path d="m2 7 10 7 10-7"/></svg>),
+  more:(p)=>(<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" {...p}><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>),
+  pin:(p)=>(<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>),
+  zap:(p)=>(<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...p}><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg>),
+};
+
+function ADSLogo({ size = "md", onlyMark = false }) {
+  const w = size === "sm" ? 28 : size === "md" ? 36 : 48;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <svg width={w} height={w * 0.66} viewBox="0 0 60 40" style={{ flexShrink: 0 }}>
+        <defs>
+          <linearGradient id="hexg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#C9A76A"/><stop offset="55%" stopColor="#A8894A"/><stop offset="100%" stopColor="#8B6F38"/></linearGradient>
+          <linearGradient id="hexg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#B8964F"/><stop offset="100%" stopColor="#7A5F2E"/></linearGradient>
+        </defs>
+        {[0,1,2].map(c => [0,1].map(r => {
+          const x = 4 + c * 18, y = 2 + r * 19;
+          return (
+            <g key={`${c}${r}`} transform={`translate(${x},${y})`}>
+              <polygon points="8,0 16,4 16,13 8,17 0,13 0,4" fill="url(#hexg)"/>
+              <polygon points="8,0 16,4 8,8 0,4" fill="url(#hexg2)" opacity="0.7"/>
+              <polygon points="8,8 16,4 16,13 8,17" fill="#000" opacity="0.18"/>
+            </g>
+          );
+        }))}
+      </svg>
+      {!onlyMark && (
+        <div style={{ lineHeight: 1 }}>
+          <div style={{ fontFamily: "var(--serif)", fontSize: 22, fontWeight: 600, color: "var(--gold-deep)", letterSpacing: 1 }}>ADS</div>
+          <div style={{ fontFamily: "var(--serif)", fontSize: 9, color: "var(--gold)", letterSpacing: 3.5, marginTop: 3 }}>SOLUTIONS</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Sidebar({ current, onNav, comunidadFilter, setComunidadFilter }) {
+  const items = [
+    { id: "dashboard",      label: "Dashboard",      icon: Icon.dashboard },
+    { id: "contratos",      label: "Contratos",      icon: Icon.contract, badge: window.CONTRATOS.filter(c=>c.estado!=="activo" && c.estado!=="aceptado").length || 0 },
+    { id: "facturas",       label: "Facturas",       icon: Icon.invoice,  badge: window.FACTURAS.filter(f=>f.estado==="vencida").length || 0 },
+    { id: "suministros",    label: "Suministros",    icon: Icon.supply },
+    { id: "notificaciones", label: "Notificaciones", icon: Icon.bell,     badge: window.NOTIFICACIONES.filter(n=>!n.leida).length || 0 },
+  ];
+  return (
+    <aside className="ads-sidebar">
+      <div style={{ padding: "26px 24px 20px" }}><ADSLogo size="md"/></div>
+      <nav style={{ padding: "8px 12px", flex: 1, overflowY: "auto" }}>
+        <div className="ads-nav-section">PRINCIPAL</div>
+        {items.map(it => (
+          <button key={it.id} className={`ads-nav-item ${current === it.id ? "active" : ""}`} onClick={() => onNav(it.id)}>
+            <it.icon/><span>{it.label}</span>{it.badge ? <span className="ads-nav-badge">{it.badge}</span> : null}
+          </button>
+        ))}
+        <div className="ads-nav-section" style={{ marginTop: 22 }}>CARTERA</div>
+        <button className={`ads-nav-item ${comunidadFilter === "all" ? "active" : ""}`} onClick={() => setComunidadFilter("all")}>
+          <Icon.building/><span>Todas las comunidades</span><span className="ads-nav-count">{window.COMUNIDADES.length}</span>
+        </button>
+        {window.COMUNIDADES.map(c => (
+          <button key={c.id} className={`ads-nav-item ads-nav-sub ${comunidadFilter === c.id ? "active" : ""}`} onClick={() => setComunidadFilter(c.id)} title={c.direccion}>
+            <span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--gold)", flexShrink: 0, marginLeft: 4 }}></span>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.nombre}</span>
+            <span className="ads-nav-count">{c.suministros}</span>
+          </button>
+        ))}
+      </nav>
+      <div style={{ padding: "16px 20px", borderTop: "1px solid var(--line)", fontSize: 11, color: "var(--ink-3)", letterSpacing: 0.4 }}>
+        <div>Portal · ADS Solutions</div>
+        <div style={{ marginTop: 4, opacity: 0.7 }}>© {new Date().getFullYear()} Comercializadora ADS</div>
+      </div>
+    </aside>
+  );
+}
+
+function Header({ onSearch, onProfile, onNotif, comunidad }) {
+  const [q, setQ] = React.useState("");
+  return (
+    <header className="ads-header">
+      <div style={{ display: "flex", alignItems: "center", gap: 16, flex: 1 }}>
+        <div style={{ position: "relative", flex: 1, maxWidth: 480 }}>
+          <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)" }}><Icon.search/></span>
+          <input className="ads-search" placeholder="Buscar contratos, facturas, CUPS, comunidades…" value={q} onChange={(e) => { setQ(e.target.value); onSearch && onSearch(e.target.value); }}/>
+        </div>
+        {comunidad !== "all" && (
+          <div className="ads-context-pill"><Icon.pin/><span>{window.getComunidad(comunidad)?.nombre}</span></div>
+        )}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <button className="ads-icon-btn" onClick={onNotif} aria-label="Notificaciones">
+          <Icon.bell/>
+          {window.NOTIFICACIONES.filter(n=>!n.leida).length > 0 && <span className="ads-icon-dot"></span>}
+        </button>
+        <button className="ads-profile-btn" onClick={onProfile}>
+          <span className="ads-avatar">{window.ADMIN.iniciales}</span>
+          <div style={{ textAlign: "left", lineHeight: 1.2, maxWidth: 200, overflow: "hidden" }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{window.ADMIN.nombre}</div>
+            {window.ADMIN.email && <div style={{ fontSize: 11, color: "var(--ink-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{window.ADMIN.email}</div>}
+          </div>
+          <Icon.chevron style={{ color: "var(--ink-3)", transform: "rotate(90deg)" }}/>
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function StatusBadge({ estado }) {
+  const map = {
+    activo:     { label: "Activo",        cls: "ok" },
+    aceptado:   { label: "Aceptado",      cls: "info" },
+    borrador:   { label: "Borrador",      cls: "muted" },
+    finalizado: { label: "Finalizado",    cls: "muted" },
+    cancelado:  { label: "Cancelado",     cls: "danger" },
+    pagada:     { label: "Pagada",        cls: "ok" },
+    pendiente:  { label: "Pendiente",     cls: "warn" },
+    vencida:    { label: "Vencida",       cls: "danger" },
+    alerta:     { label: "Alerta",        cls: "warn" },
+    renovacion: { label: "En renovación", cls: "info" },
+  };
+  const m = map[estado] || { label: estado || "—", cls: "muted" };
+  return <span className={`ads-badge ads-badge-${m.cls}`}>{m.label}</span>;
+}
+
+function TarifaBadge({ tarifa }) {
+  return <span className="ads-tarifa">{tarifa || "—"}</span>;
+}
+
+function PageHeader({ eyebrow, title, description, children }) {
+  return (
+    <div className="ads-pageheader">
+      <div>
+        {eyebrow && <div className="ads-eyebrow">{eyebrow}</div>}
+        <h1 className="ads-h1">{title}</h1>
+        {description && <p className="ads-pagedesc">{description}</p>}
+      </div>
+      {children && <div style={{ display: "flex", gap: 10, alignItems: "center" }}>{children}</div>}
+    </div>
+  );
+}
+
+function Empty({ title = "Sin resultados", description }) {
+  return (
+    <div style={{ padding: "60px 20px", textAlign: "center", color: "var(--ink-3)" }}>
+      <div style={{ fontSize: 14, fontWeight: 500, color: "var(--ink-2)", marginBottom: 4 }}>{title}</div>
+      {description && <div style={{ fontSize: 13 }}>{description}</div>}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   5. CHARTS (SVG nativos, sin libs)
+   ═══════════════════════════════════════════════════════════════════ */
+function LineAreaChart({ data, dataPrev, height = 280, color = "var(--gold)", colorPrev = "var(--gold-soft)", yLabel = "kWh", showLegend = true, currentYear, prevYear }) {
+  const ref = React.useRef(null);
+  const [w, setW] = React.useState(720);
+  const [hover, setHover] = React.useState(null);
+  React.useEffect(() => {
+    if (!ref.current) return;
+    const ro = new ResizeObserver(([e]) => setW(e.contentRect.width));
+    ro.observe(ref.current);
+    return () => ro.disconnect();
+  }, []);
+  const padL = 56, padR = 18, padT = 16, padB = 36;
+  const chartW = Math.max(0, w - padL - padR);
+  const chartH = height - padT - padB;
+  const all = [...data, ...(dataPrev || [])].filter(v => v != null);
+  const maxV = Math.max(...all, 1) * 1.15;
+  const yTicks = 5;
+  const xStep = chartW / Math.max(1, data.length - 1);
+  const xAt = i => padL + i * xStep;
+  const yAt = v => padT + chartH - (v / maxV) * chartH;
+  const linePath = (arr) => arr.map((v, i) => `${i === 0 ? "M" : "L"} ${xAt(i)} ${yAt(v ?? 0)}`).join(" ");
+  const areaPath = (arr) => `${linePath(arr)} L ${xAt(arr.length - 1)} ${padT + chartH} L ${xAt(0)} ${padT + chartH} Z`;
+  return (
+    <div ref={ref} style={{ width: "100%", position: "relative" }}>
+      <svg width={w} height={height} style={{ display: "block", overflow: "visible" }}>
+        <defs>
+          <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.22"/><stop offset="100%" stopColor={color} stopOpacity="0"/></linearGradient>
+        </defs>
+        {Array.from({ length: yTicks + 1 }, (_, i) => {
+          const v = (maxV / yTicks) * i;
+          const y = yAt(v);
+          return (
+            <g key={i}>
+              <line x1={padL} x2={padL + chartW} y1={y} y2={y} stroke="var(--line-soft)" strokeDasharray={i === 0 ? "0" : "2 4"}/>
+              <text x={padL - 8} y={y + 4} textAnchor="end" fontSize="11" fill="var(--ink-3)">{v >= 1000 ? (v / 1000).toFixed(1) + "k" : v.toFixed(0)}</text>
+            </g>
+          );
+        })}
+        {data.map((_, i) => (<text key={i} x={xAt(i)} y={height - 14} textAnchor="middle" fontSize="11" fill="var(--ink-3)">{window.MESES[i % 12]}</text>))}
+        {dataPrev && (<path d={linePath(dataPrev)} fill="none" stroke={colorPrev} strokeWidth="1.5" strokeDasharray="4 4"/>)}
+        <path d={areaPath(data)} fill="url(#lineGrad)"/>
+        <path d={linePath(data)} fill="none" stroke={color} strokeWidth="2"/>
+        {data.map((v, i) => (<circle key={i} cx={xAt(i)} cy={yAt(v ?? 0)} r={hover === i ? 5 : 3.2} fill="white" stroke={color} strokeWidth="2"/>))}
+        {data.map((v, i) => (<rect key={`h${i}`} x={xAt(i) - xStep / 2} y={padT} width={xStep} height={chartH} fill="transparent" onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}/>))}
+      </svg>
+      {hover !== null && (
+        <div style={{ position: "absolute", left: xAt(hover) + 8, top: yAt(data[hover] ?? 0) - 8, background: "var(--ink-1)", color: "white", padding: "10px 12px", borderRadius: 8, fontSize: 12, pointerEvents: "none", whiteSpace: "nowrap", boxShadow: "0 12px 32px rgba(0,0,0,0.18)", zIndex: 5 }}>
+          <div style={{ opacity: 0.7, fontSize: 10, marginBottom: 4, letterSpacing: 0.4 }}>{window.MESES_LARGOS[hover % 12].toUpperCase()}</div>
+          <div><b>{currentYear}:</b> {yLabel === "€" ? window.formatEUR(data[hover] ?? 0) : window.formatKWh(data[hover] ?? 0)}</div>
+          {dataPrev && dataPrev[hover] != null && (<div style={{ opacity: 0.75 }}><b>{prevYear}:</b> {yLabel === "€" ? window.formatEUR(dataPrev[hover]) : window.formatKWh(dataPrev[hover])}</div>)}
+        </div>
+      )}
+      {showLegend && (
+        <div style={{ display: "flex", gap: 18, marginTop: 4, paddingLeft: padL, fontSize: 12, color: "var(--ink-2)" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 14, height: 2, background: color, display: "inline-block" }}></span>{currentYear}</span>
+          {dataPrev && (<span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 14, height: 0, borderTop: `2px dashed ${colorPrev}`, display: "inline-block" }}></span>{prevYear}</span>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BarChart({ data, height = 240, color = "var(--gold)", labels = window.MESES, valueLabel = "€" }) {
+  const ref = React.useRef(null);
+  const [w, setW] = React.useState(720);
+  const [hover, setHover] = React.useState(null);
+  React.useEffect(() => {
+    if (!ref.current) return;
+    const ro = new ResizeObserver(([e]) => setW(e.contentRect.width));
+    ro.observe(ref.current);
+    return () => ro.disconnect();
+  }, []);
+  const padL = 56, padR = 12, padT = 14, padB = 32;
+  const chartW = Math.max(0, w - padL - padR);
+  const chartH = height - padT - padB;
+  const maxV = Math.max(...data, 1) * 1.15;
+  const barW = (chartW / data.length) * 0.62;
+  const step = chartW / data.length;
+  const yAt = v => padT + chartH - (v / maxV) * chartH;
+  return (
+    <div ref={ref} style={{ width: "100%", position: "relative" }}>
+      <svg width={w} height={height} style={{ display: "block" }}>
+        {Array.from({ length: 5 }, (_, i) => {
+          const v = (maxV / 4) * i;
+          const y = yAt(v);
+          return (<g key={i}><line x1={padL} x2={padL + chartW} y1={y} y2={y} stroke="var(--line-soft)" strokeDasharray={i === 0 ? "0" : "2 4"}/><text x={padL - 8} y={y + 4} textAnchor="end" fontSize="11" fill="var(--ink-3)">{v >= 1000 ? (v / 1000).toFixed(1) + "k" : v.toFixed(0)}</text></g>);
+        })}
+        {data.map((v, i) => {
+          const x = padL + step * i + (step - barW) / 2;
+          const y = yAt(v);
+          const h = padT + chartH - y;
+          return (<g key={i} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}><rect x={x} y={y} width={barW} height={h} fill={hover === i ? "var(--gold-deep)" : color} rx="2" style={{ transition: "fill 120ms" }}/><text x={x + barW / 2} y={height - 12} textAnchor="middle" fontSize="11" fill="var(--ink-3)">{labels[i]}</text></g>);
+        })}
+      </svg>
+      {hover !== null && (<div style={{ position: "absolute", left: padL + step * hover + step / 2, transform: "translateX(-50%)", top: yAt(data[hover]) - 44, background: "var(--ink-1)", color: "white", padding: "8px 10px", borderRadius: 6, fontSize: 12, pointerEvents: "none", boxShadow: "0 8px 20px rgba(0,0,0,0.16)" }}>{valueLabel === "€" ? window.formatEUR(data[hover]) : window.formatKWh(data[hover])}</div>)}
+    </div>
+  );
+}
+
+function DonutChart({ data, size = 180, thickness = 28 }) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  const cx = size / 2, cy = size / 2;
+  const r = size / 2 - thickness / 2;
+  let angle = -Math.PI / 2;
+  const arcs = data.map(d => {
+    const frac = d.value / (total || 1);
+    const a0 = angle;
+    const a1 = angle + frac * Math.PI * 2;
+    angle = a1;
+    const large = a1 - a0 > Math.PI ? 1 : 0;
+    const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
+    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+    return { d, path: `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`, frac };
+  });
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
+      <svg width={size} height={size} style={{ flexShrink: 0 }}>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--line-soft)" strokeWidth={thickness}/>
+        {arcs.map((a, i) => (a.frac > 0 && <path key={i} d={a.path} fill="none" stroke={a.d.color} strokeWidth={thickness} strokeLinecap="butt"/>))}
+        <text x={cx} y={cy - 4} textAnchor="middle" fontSize="22" fontWeight="500" fill="var(--ink-1)" style={{ fontFamily: "var(--serif)" }}>{total}</text>
+        <text x={cx} y={cy + 14} textAnchor="middle" fontSize="10" fill="var(--ink-3)" letterSpacing="1.4">SUMINISTROS</text>
+      </svg>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0, flex: 1 }}>
+        {data.map((d, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+            <span style={{ width: 10, height: 10, background: d.color, borderRadius: 2, flexShrink: 0 }}></span>
+            <span style={{ flex: 1, color: "var(--ink-2)" }}>{d.label}</span>
+            <span style={{ fontVariantNumeric: "tabular-nums", color: "var(--ink-1)", fontWeight: 500 }}>{d.value}</span>
+            <span style={{ color: "var(--ink-3)", fontVariantNumeric: "tabular-nums", minWidth: 38, textAlign: "right" }}>{total > 0 ? ((d.value / total) * 100).toFixed(0) : 0}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HBarChart({ data, valueFmt = window.formatKWh, color = "var(--gold)" }) {
+  const max = Math.max(...data.map(d => d.value), 1);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {data.map((d, i) => (
+        <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 6 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, gridColumn: "1 / -1" }}>
+            <div style={{ color: "var(--ink-1)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <span style={{ color: "var(--ink-3)", fontWeight: 400, marginRight: 8, fontVariantNumeric: "tabular-nums" }}>{String(i + 1).padStart(2, "0")}</span>{d.label}
+            </div>
+            <div style={{ color: "var(--ink-2)", fontVariantNumeric: "tabular-nums", fontWeight: 500, marginLeft: 12 }}>{valueFmt(d.value)}</div>
+          </div>
+          <div style={{ gridColumn: "1 / -1", height: 6, background: "var(--line-soft)", borderRadius: 3, overflow: "hidden" }}>
+            <div style={{ width: `${(d.value / max) * 100}%`, height: "100%", background: color, borderRadius: 3 }}></div>
+          </div>
+          <div style={{ gridColumn: "1 / -1", fontSize: 11, color: "var(--ink-3)" }}>{d.sublabel}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   6. DASHBOARD
+   ═══════════════════════════════════════════════════════════════════ */
+function Card({ children, padding = 24, style }) {
+  return <div className="ads-card" style={{ padding, ...style }}>{children}</div>;
+}
+function CardHeader({ title, subtitle, right }) {
+  return (<div className="ads-card-header"><div><h3 className="ads-card-title">{title}</h3>{subtitle && <div className="ads-card-subtitle">{subtitle}</div>}</div>{right}</div>);
+}
+function KPICard({ label, value, sub, delta, deltaLabel, deltaInverted, accent = "neutral", onClick }) {
+  const Tag = onClick ? "button" : "div";
+  let deltaColor = "var(--ink-3)";
+  let deltaArrow = null;
+  if (delta != null && !Number.isNaN(delta)) {
+    const positive = delta > 0;
+    const isGood = deltaInverted ? !positive : positive;
+    deltaColor = Math.abs(delta) < 0.5 ? "var(--ink-3)" : (isGood ? "var(--ok)" : "var(--danger)");
+    deltaArrow = positive ? <Icon.arrowUp/> : <Icon.arrowDown/>;
+  }
+  return (
+    <Tag className={`ads-kpi ads-kpi-${accent}`} onClick={onClick}>
+      <div className="ads-kpi-label">{label}</div>
+      <div className="ads-kpi-value">{value}</div>
+      {delta != null && !Number.isNaN(delta) ? (
+        <div className="ads-kpi-sub" style={{ color: deltaColor }}>
+          {deltaArrow}<span style={{ fontVariantNumeric: "tabular-nums" }}>{Math.abs(delta).toFixed(1)}%</span>
+          <span style={{ color: "var(--ink-3)" }}>{deltaLabel}</span>
+        </div>
+      ) : sub ? (<div className="ads-kpi-sub">{sub}</div>) : null}
+    </Tag>
+  );
+}
+
+function Dashboard({ comunidadFilter, onNav, onOpenInvoice }) {
+  const [period, setPeriod] = React.useState("12m");
+
+  const suministrosFiltrados = React.useMemo(() => {
+    if (comunidadFilter === "all") return window.SUMINISTROS;
+    return window.SUMINISTROS.filter(s => s.comunidadId === comunidadFilter);
+  }, [comunidadFilter]);
+
+  const suministrosIds = suministrosFiltrados.map(s => s.id);
+  const CY = window.CURRENT_YEAR;
+  const PY = window.PREVIOUS_YEAR;
+  const monthsCY = window.CURRENT_MONTH + 1;
+
+  const consumoMensualCY = Array.from({ length: 12 }, (_, m) => {
+    return window.FACTURAS.filter(f => f.year === CY && f.mesIdx === m && suministrosIds.includes(f.suministroId)).reduce((s, f) => s + (f.consumoKwh || 0), 0);
+  });
+  const consumoMensualPY = Array.from({ length: 12 }, (_, m) => {
+    return window.FACTURAS.filter(f => f.year === PY && f.mesIdx === m && suministrosIds.includes(f.suministroId)).reduce((s, f) => s + (f.consumoKwh || 0), 0);
+  });
+  const costeMensualCY = Array.from({ length: 12 }, (_, m) => {
+    return +window.FACTURAS.filter(f => f.year === CY && f.mesIdx === m && suministrosIds.includes(f.suministroId)).reduce((s, f) => s + (f.importe || 0), 0).toFixed(2);
+  });
+  const costeMensualPY = Array.from({ length: 12 }, (_, m) => {
+    return +window.FACTURAS.filter(f => f.year === PY && f.mesIdx === m && suministrosIds.includes(f.suministroId)).reduce((s, f) => s + (f.importe || 0), 0).toFixed(2);
+  });
+
+  const totalSuministros = suministrosFiltrados.length;
+  const consumoYtd = consumoMensualCY.slice(0, monthsCY).reduce((a, b) => a + b, 0);
+  const consumoYtdPrev = consumoMensualPY.slice(0, monthsCY).reduce((a, b) => a + b, 0);
+  const consumoDelta = consumoYtdPrev > 0 ? ((consumoYtd - consumoYtdPrev) / consumoYtdPrev) * 100 : null;
+
+  const costeYtd = costeMensualCY.slice(0, monthsCY).reduce((a, b) => a + b, 0);
+  const costeYtdPrev = costeMensualPY.slice(0, monthsCY).reduce((a, b) => a + b, 0);
+  const costeDelta = costeYtdPrev > 0 ? ((costeYtd - costeYtdPrev) / costeYtdPrev) * 100 : null;
+
+  const facturasPendientes = window.FACTURAS.filter(f => f.estado === "pendiente" && suministrosIds.includes(f.suministroId));
+  const facturasVencidas   = window.FACTURAS.filter(f => f.estado === "vencida"   && suministrosIds.includes(f.suministroId));
+  const importePendiente   = [...facturasPendientes, ...facturasVencidas].reduce((s, f) => s + (f.importe || 0), 0);
+
+  const tarifaColors = ["#A8894A", "#C9A76A", "#7A5F2E", "#D4B580", "#5C4621"];
+  const tarifaDist = (window.TARIFAS.length ? window.TARIFAS : [...new Set(suministrosFiltrados.map(s=>s.tarifa))]).map((t, i) => ({
+    label: t || "—",
+    value: suministrosFiltrados.filter(s => s.tarifa === t).length,
+    color: tarifaColors[i % tarifaColors.length],
+  }));
+
+  const topSuministros = [...suministrosFiltrados]
+    .sort((a, b) => (b.consumoAnual || 0) - (a.consumoAnual || 0))
+    .slice(0, 6)
+    .map(s => ({
+      label: s.alias || s.cups,
+      sublabel: `${window.getComunidad(s.comunidadId)?.nombre || ""} · ${s.tarifa}`,
+      value: s.consumoAnual || 0,
+    }));
+
+  const ultimasFacturas = [...window.FACTURAS]
+    .filter(f => suministrosIds.includes(f.suministroId))
+    .sort((a, b) => (b.fechaEmision || "").localeCompare(a.fechaEmision || ""))
+    .slice(0, 6);
+
+  const comunidadActual = comunidadFilter !== "all" ? window.getComunidad(comunidadFilter) : null;
+  const headerTitle = comunidadActual ? comunidadActual.nombre : `Hola, ${window.ADMIN.nombre}`;
+  const headerEyebrow = comunidadActual ? comunidadActual.direccion : "Vista global";
+  const headerDesc = comunidadActual
+    ? `${suministrosFiltrados.length} suministros${comunidadActual.nif ? ` · NIF ${comunidadActual.nif}` : ""}`
+    : `Gestionas ${window.SUMINISTROS.length} suministros eléctricos en ${window.COMUNIDADES.length} comunidades.`;
+
+  return (
+    <div className="ads-page">
+      <PageHeader eyebrow={headerEyebrow} title={headerTitle} description={headerDesc}>
+        <div className="ads-segmented">
+          {["6m", "12m", "ytd"].map(p => (<button key={p} className={period === p ? "active" : ""} onClick={() => setPeriod(p)}>{p === "6m" ? "Últimos 6 meses" : p === "12m" ? "Últimos 12 meses" : "Año actual"}</button>))}
+        </div>
+      </PageHeader>
+
+      <div className="ads-kpi-grid">
+        <KPICard label="Suministros activos" value={totalSuministros} sub={`${window.COMUNIDADES.length} comunidades`} accent="neutral"/>
+        <KPICard label={`Consumo acumulado ${CY}`} value={window.formatKWh(consumoYtd)} delta={consumoDelta} deltaLabel={`vs ${PY}`} deltaInverted/>
+        <KPICard label={`Coste acumulado ${CY}`}   value={window.formatEUR(costeYtd)}    delta={costeDelta}    deltaLabel={`vs ${PY}`} deltaInverted/>
+        <KPICard label="Pendiente de pago" value={window.formatEUR(importePendiente)} sub={`${facturasPendientes.length} pendientes · ${facturasVencidas.length} vencidas`} accent={facturasVencidas.length > 0 ? "danger" : "neutral"} onClick={() => onNav("facturas")}/>
+      </div>
+
+      <div className="ads-grid-2-1">
+        <Card>
+          <CardHeader title="Consumo eléctrico" subtitle="Comparativa mensual con año anterior" right={<div style={{ display: "flex", gap: 6, alignItems: "center", color: "var(--ink-3)", fontSize: 12 }}><Icon.zap style={{ color: "var(--gold)" }}/> kWh</div>}/>
+          <LineAreaChart data={consumoMensualCY} dataPrev={consumoMensualPY} height={300} yLabel="kWh" currentYear={CY} prevYear={PY}/>
+        </Card>
+        <Card>
+          <CardHeader title="Distribución por tarifa" subtitle="Acceso a redes"/>
+          <div style={{ paddingTop: 14 }}><DonutChart data={tarifaDist}/></div>
+        </Card>
+      </div>
+
+      <div className="ads-grid-2-1">
+        <Card>
+          <CardHeader title="Coste mensual" subtitle="Importe facturado por periodo"/>
+          <BarChart data={costeMensualCY} height={260} valueLabel="€"/>
+        </Card>
+        <Card>
+          <CardHeader title="Top suministros" subtitle="Mayor consumo anual"/>
+          <div style={{ paddingTop: 6 }}>{topSuministros.length ? <HBarChart data={topSuministros}/> : <Empty title="Sin datos" description="Aún no hay consumo anual registrado"/>}</div>
+        </Card>
+      </div>
+
+      <div className="ads-grid-2-1">
+        <Card>
+          <CardHeader title="Últimas facturas" right={<button className="ads-link" onClick={() => onNav("facturas")}>Ver todas <Icon.chevron/></button>}/>
+          <div className="ads-mini-list">
+            {ultimasFacturas.length === 0 && <Empty description="Aún no hay facturas emitidas para tus suministros"/>}
+            {ultimasFacturas.map(f => {
+              const s = window.getSuministro(f.suministroId);
+              const c = window.getComunidad(f.comunidadId);
+              return (
+                <button key={f.id} className="ads-mini-row" onClick={() => onOpenInvoice(f.id)}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 13, color: "var(--ink-1)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.numero || f.id}</div>
+                    <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c?.nombre || f.comunidadNombre || "—"} · {s?.alias || f.alias || "—"} · {f.periodo}</div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>{window.formatEUR(f.importe)}</div>
+                    <div style={{ marginTop: 4 }}><StatusBadge estado={f.estado}/></div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+        <Card>
+          <CardHeader title="Avisos recientes" right={<button className="ads-link" onClick={() => onNav("notificaciones")}>Ver todos <Icon.chevron/></button>}/>
+          <div className="ads-mini-list">
+            {window.NOTIFICACIONES.length === 0 && <Empty title="Sin avisos" description="Aquí verás notificaciones de nuevas facturas, vencimientos e impagos"/>}
+            {window.NOTIFICACIONES.slice(0, 4).map(n => (
+              <div key={n.id} className="ads-mini-row" style={{ cursor: "default", alignItems: "flex-start" }}>
+                <span className={`ads-notif-dot ads-notif-${n.tipo}`}>{n.tipo === "alerta" || n.tipo === "vencimiento" ? <Icon.alert/> : <Icon.bell/>}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, color: "var(--ink-1)", fontWeight: 500 }}>{n.titulo}</div>
+                  <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 2, lineHeight: 1.45 }}>{n.descripcion}</div>
+                  <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 6, opacity: 0.7 }}>{window.formatFecha(n.fecha)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   7. VIEWS: Contratos, Detalle, Facturas, Modal, Suministros, etc.
+   ═══════════════════════════════════════════════════════════════════ */
+
+function ContratosView({ comunidadFilter, onSelect }) {
+  const [search, setSearch] = React.useState("");
+  const [estadoFilter, setEstadoFilter] = React.useState("todos");
+  const [sortBy, setSortBy] = React.useState("alias");
+
+  const contratos = React.useMemo(() => {
+    let list = window.CONTRATOS.map(c => ({ ...c, suministro: window.getSuministro(c.suministroId), comunidad: window.getComunidad(c.comunidadId) }));
+    if (comunidadFilter !== "all") list = list.filter(c => c.comunidadId === comunidadFilter);
+    if (estadoFilter !== "todos") list = list.filter(c => c.estado === estadoFilter);
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter(c => (c.numero||"").toLowerCase().includes(q) || (c.cups||"").toLowerCase().includes(q) || (c.alias||"").toLowerCase().includes(q) || (c.comunidad?.nombre||"").toLowerCase().includes(q));
+    }
+    list.sort((a, b) => {
+      if (sortBy === "alias")       return (a.alias||"").localeCompare(b.alias||"");
+      if (sortBy === "comunidad")   return (a.comunidad?.nombre||"").localeCompare(b.comunidad?.nombre||"");
+      if (sortBy === "potencia")    return (b.potenciaContratada||0) - (a.potenciaContratada||0);
+      if (sortBy === "vencimiento") return (a.fechaFin||"").localeCompare(b.fechaFin||"");
+      return 0;
+    });
+    return list;
+  }, [comunidadFilter, search, estadoFilter, sortBy]);
+
+  return (
+    <div className="ads-page">
+      <PageHeader eyebrow="Cartera" title="Contratos" description={`${contratos.length} contratos en tu cartera`}>
+        <button className="ads-btn ads-btn-ghost"><Icon.download/>Exportar</button>
+      </PageHeader>
+      <div className="ads-toolbar">
+        <div style={{ position: "relative", flex: 1, maxWidth: 360 }}>
+          <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)" }}><Icon.search/></span>
+          <input className="ads-input" placeholder="Buscar por nº contrato, CUPS o alias…" value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 38 }}/>
+        </div>
+        <div className="ads-segmented">
+          {[["todos","Todos"],["activo","Activos"],["aceptado","Aceptados"],["finalizado","Finalizados"]].map(([v,l]) => (
+            <button key={v} className={estadoFilter === v ? "active" : ""} onClick={() => setEstadoFilter(v)}>{l}</button>
+          ))}
+        </div>
+        <select className="ads-select" value={sortBy} onChange={e => setSortBy(e.target.value)}>
+          <option value="alias">Ordenar por alias</option>
+          <option value="comunidad">Ordenar por comunidad</option>
+          <option value="potencia">Ordenar por potencia</option>
+          <option value="vencimiento">Ordenar por vencimiento</option>
+        </select>
+      </div>
+      <div className="ads-card" style={{ padding: 0, overflow: "hidden" }}>
+        <table className="ads-table">
+          <thead><tr><th style={{ width: 140 }}>Nº Contrato</th><th>Suministro</th><th>Comunidad</th><th style={{ width: 80 }}>Tarifa</th><th style={{ width: 100, textAlign: "right" }}>Potencia</th><th style={{ width: 130 }}>Vencimiento</th><th style={{ width: 110 }}>Estado</th><th style={{ width: 40 }}></th></tr></thead>
+          <tbody>
+            {contratos.map(c => (
+              <tr key={c.id} onClick={() => onSelect(c.id)} className="ads-row-clickable">
+                <td style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--ink-2)" }}>{c.numero}</td>
+                <td>
+                  <div style={{ fontWeight: 500, color: "var(--ink-1)" }}>{c.alias}</div>
+                  <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--ink-3)", marginTop: 2 }}>{c.cups}</div>
+                </td>
+                <td style={{ color: "var(--ink-2)" }}>{c.comunidad?.nombre || "—"}</td>
+                <td><TarifaBadge tarifa={c.tarifa}/></td>
+                <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--ink-2)" }}>{window.formatNum(c.potenciaContratada, 2)} kW</td>
+                <td style={{ color: "var(--ink-2)", fontSize: 13 }}>{window.formatFecha(c.fechaFin)}</td>
+                <td><StatusBadge estado={c.estado}/></td>
+                <td><Icon.chevron style={{ color: "var(--ink-3)" }}/></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {contratos.length === 0 && <Empty description="Prueba a ajustar los filtros"/>}
+      </div>
+    </div>
+  );
+}
+
+function ContratoDetalle({ contratoId, onBack, onOpenInvoice }) {
+  const c = window.CONTRATOS.find(x => x.id === contratoId);
+  if (!c) return null;
+  const s = window.getSuministro(c.suministroId);
+  const com = window.getComunidad(c.comunidadId);
+  const facturasContrato = window.getFacturasBySuministro(s?.id || "")
+    .sort((a, b) => (b.fechaEmision || "").localeCompare(a.fechaEmision || ""));
+
+  // Consumo últimos 12 meses (dinámico, terminando en el mes actual).
+  const today = new Date();
+  const consumo12m = Array.from({ length: 12 }, (_, m) => {
+    const d = new Date(today.getFullYear(), today.getMonth() - 11 + m, 1);
+    const y = d.getFullYear(), mi = d.getMonth();
+    const f = window.FACTURAS.find(f => f.suministroId === s?.id && f.year === y && f.mesIdx === mi);
+    return f ? f.consumoKwh : 0;
+  });
+  const labels12m = Array.from({ length: 12 }, (_, m) => {
+    const d = new Date(today.getFullYear(), today.getMonth() - 11 + m, 1);
+    return window.MESES[d.getMonth()];
+  });
+
+  const tienePrecios = c.precioEnergia && c.precioEnergia.p1 != null;
+
+  return (
+    <div className="ads-page">
+      <button className="ads-back" onClick={onBack}><Icon.chevron style={{ transform: "rotate(180deg)" }}/>Volver a contratos</button>
+      <PageHeader eyebrow={`Contrato ${c.numero}`} title={s?.alias || c.alias} description={`${com?.nombre || "—"}${com?.direccion ? ` · ${com.direccion}` : ""}`}>
+        <StatusBadge estado={c.estado}/>
+      </PageHeader>
+      <div className="ads-grid-2-1">
+        <Card>
+          <CardHeader title="Datos del contrato"/>
+          <dl className="ads-dl">
+            <div><dt>Nº contrato</dt><dd style={{ fontFamily: "var(--mono)" }}>{c.numero}</dd></div>
+            <div><dt>CUPS</dt><dd style={{ fontFamily: "var(--mono)" }}>{c.cups}</dd></div>
+            <div><dt>Modalidad</dt><dd>{c.modalidad || "—"}</dd></div>
+            <div><dt>Tarifa de acceso</dt><dd>{c.tarifa}</dd></div>
+            <div><dt>Potencia contratada</dt><dd>{window.formatNum(c.potenciaContratada, 2)} kW</dd></div>
+            <div><dt>Energía</dt><dd>{c.energia || "—"}</dd></div>
+            <div><dt>Inicio</dt><dd>{window.formatFecha(c.fechaInicio)}</dd></div>
+            <div><dt>Fin de vigencia</dt><dd>{window.formatFecha(c.fechaFin)}</dd></div>
+            <div><dt>Auto-renovación</dt><dd>{c.autoRenovacion ? "Sí" : "No"}</dd></div>
+          </dl>
+        </Card>
+        <Card>
+          <CardHeader title="Precios contratados" subtitle={tienePrecios ? "€ sin impuestos" : "Información no disponible vía API"}/>
+          {tienePrecios ? (
+            <div className="ads-price-grid">
+              <div><div className="ads-price-label">Energía P1</div><div className="ads-price-val">{window.formatNum(c.precioEnergia.p1, 4)}<span>€/kWh</span></div></div>
+              <div><div className="ads-price-label">Energía P2</div><div className="ads-price-val">{window.formatNum(c.precioEnergia.p2, 4)}<span>€/kWh</span></div></div>
+              <div><div className="ads-price-label">Energía P3</div><div className="ads-price-val">{window.formatNum(c.precioEnergia.p3, 4)}<span>€/kWh</span></div></div>
+              <div><div className="ads-price-label">Potencia</div><div className="ads-price-val">{window.formatNum(c.precioPotencia, 2)}<span>€/kW·año</span></div></div>
+            </div>
+          ) : (
+            <div style={{ padding: 14, background: "var(--bg-soft)", borderRadius: 8, fontSize: 13, color: "var(--ink-2)", lineHeight: 1.6 }}>
+              Los precios contratados de cada periodo no se exponen en el listado de contratos de Nemon. Puedes consultarlos en cada factura individual del histórico.
+            </div>
+          )}
+        </Card>
+      </div>
+      <Card>
+        <CardHeader title="Consumo últimos 12 meses" subtitle="kWh por periodo de facturación"/>
+        <LineAreaChart data={consumo12m} height={240} yLabel="kWh" showLegend={false} currentYear={today.getFullYear()}/>
+      </Card>
+      <Card>
+        <CardHeader title="Facturas asociadas"/>
+        {facturasContrato.length === 0 ? <Empty description="Aún no hay facturas para este contrato"/> : (
+          <table className="ads-table ads-table-sm">
+            <thead><tr><th>Nº Factura</th><th>Periodo</th><th>Emisión</th><th style={{ textAlign: "right" }}>Consumo</th><th style={{ textAlign: "right" }}>Importe</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+              {facturasContrato.slice(0, 12).map(f => (
+                <tr key={f.id} onClick={() => onOpenInvoice(f.id)} className="ads-row-clickable">
+                  <td style={{ fontFamily: "var(--mono)", fontSize: 12 }}>{f.numero || f.id}</td>
+                  <td>{f.periodo}</td>
+                  <td style={{ color: "var(--ink-3)", fontSize: 13 }}>{window.formatFecha(f.fechaEmision)}</td>
+                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{window.formatNum(f.consumoKwh)} kWh</td>
+                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>{window.formatEUR(f.importe)}</td>
+                  <td><StatusBadge estado={f.estado}/></td>
+                  <td><Icon.chevron style={{ color: "var(--ink-3)" }}/></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function FacturasView({ comunidadFilter, onOpenInvoice }) {
+  const [search, setSearch] = React.useState("");
+  const [estadoFilter, setEstadoFilter] = React.useState("todos");
+  const [yearFilter, setYearFilter] = React.useState("todos");
+
+  const yearsAvailable = React.useMemo(() => {
+    return [...new Set(window.FACTURAS.map(f => f.year).filter(Boolean))].sort((a,b)=>b-a);
+  }, []);
+
+  const facturas = React.useMemo(() => {
+    let list = window.FACTURAS.map(f => ({ ...f, suministro: window.getSuministro(f.suministroId), comunidad: window.getComunidad(f.comunidadId) }));
+    if (comunidadFilter !== "all") list = list.filter(f => f.comunidadId === comunidadFilter);
+    if (estadoFilter !== "todos") list = list.filter(f => f.estado === estadoFilter);
+    if (yearFilter !== "todos") list = list.filter(f => f.year === parseInt(yearFilter));
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter(f => (f.numero||"").toLowerCase().includes(q) || (f.suministro?.alias||"").toLowerCase().includes(q) || (f.suministro?.cups||f.cups||"").toLowerCase().includes(q));
+    }
+    list.sort((a,b) => (b.fechaEmision||"").localeCompare(a.fechaEmision||""));
+    return list;
+  }, [comunidadFilter, search, estadoFilter, yearFilter]);
+
+  const totalImporte = facturas.reduce((s, f) => s + (f.importe||0), 0);
+  const totalConsumo = facturas.reduce((s, f) => s + (f.consumoKwh||0), 0);
+  const pendientes   = facturas.filter(f => f.estado !== "pagada").reduce((s, f) => s + (f.importe||0), 0);
+
+  return (
+    <div className="ads-page">
+      <PageHeader eyebrow="Facturación" title="Facturas" description="Histórico de tus facturas eléctricas">
+        <button className="ads-btn ads-btn-ghost"><Icon.download/>Exportar selección</button>
+      </PageHeader>
+      <div className="ads-summary-strip">
+        <div><span>Facturas</span><b>{facturas.length}</b></div>
+        <div><span>Importe total</span><b>{window.formatEUR(totalImporte)}</b></div>
+        <div><span>Consumo total</span><b>{window.formatKWh(totalConsumo)}</b></div>
+        <div><span style={{ color: pendientes > 0 ? "var(--danger)" : undefined }}>Pendiente</span><b style={{ color: pendientes > 0 ? "var(--danger)" : undefined }}>{window.formatEUR(pendientes)}</b></div>
+      </div>
+      <div className="ads-toolbar">
+        <div style={{ position: "relative", flex: 1, maxWidth: 360 }}>
+          <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)" }}><Icon.search/></span>
+          <input className="ads-input" placeholder="Buscar nº factura, CUPS o alias…" value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 38 }}/>
+        </div>
+        <div className="ads-segmented">
+          {[["todos","Todas"],["pagada","Pagadas"],["pendiente","Pendientes"],["vencida","Vencidas"]].map(([v,l]) => (<button key={v} className={estadoFilter === v ? "active" : ""} onClick={() => setEstadoFilter(v)}>{l}</button>))}
+        </div>
+        <select className="ads-select" value={yearFilter} onChange={e => setYearFilter(e.target.value)}>
+          <option value="todos">Todos los años</option>
+          {yearsAvailable.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+      </div>
+      <div className="ads-card" style={{ padding: 0, overflow: "hidden" }}>
+        <table className="ads-table">
+          <thead><tr><th style={{ width: 160 }}>Nº Factura</th><th>Suministro</th><th style={{ width: 130 }}>Periodo</th><th style={{ width: 110 }}>Emisión</th><th style={{ width: 120, textAlign: "right" }}>Consumo</th><th style={{ width: 120, textAlign: "right" }}>Importe</th><th style={{ width: 110 }}>Estado</th><th style={{ width: 90 }}></th></tr></thead>
+          <tbody>
+            {facturas.slice(0, 80).map(f => (
+              <tr key={f.id} onClick={() => onOpenInvoice(f.id)} className="ads-row-clickable">
+                <td style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--ink-2)" }}>{f.numero || f.id}</td>
+                <td>
+                  <div style={{ fontWeight: 500, color: "var(--ink-1)" }}>{f.suministro?.alias || f.alias || "—"}</div>
+                  <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2 }}>{f.comunidad?.nombre || f.comunidadNombre || "—"}</div>
+                </td>
+                <td style={{ fontSize: 13 }}>{f.periodo}</td>
+                <td style={{ color: "var(--ink-3)", fontSize: 13 }}>{window.formatFecha(f.fechaEmision)}</td>
+                <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{window.formatNum(f.consumoKwh)} kWh</td>
+                <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 500, color: "var(--ink-1)" }}>{window.formatEUR(f.importe)}</td>
+                <td><StatusBadge estado={f.estado}/></td>
+                <td>
+                  <button className="ads-icon-btn-sm" onClick={(e) => { e.stopPropagation(); onOpenInvoice(f.id); }} title="Ver factura"><Icon.download/></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {facturas.length === 0 && <Empty description="Sin facturas que coincidan con los filtros"/>}
+        {facturas.length > 80 && <div style={{ padding: 14, textAlign: "center", color: "var(--ink-3)", fontSize: 12, borderTop: "1px solid var(--line)" }}>Mostrando 80 de {facturas.length} facturas</div>}
+      </div>
+    </div>
+  );
+}
+
+function InvoiceModal({ facturaId, onClose }) {
+  const [downloading, setDownloading] = React.useState(false);
+  const [downloaded, setDownloaded] = React.useState(false);
+  const [downloadError, setDownloadError] = React.useState(null);
+  if (!facturaId) return null;
+  const f = window.FACTURAS.find(x => x.id === facturaId);
+  if (!f) return null;
+  const s = window.getSuministro(f.suministroId);
+  const com = window.getComunidad(f.comunidadId);
+  const ct = s ? window.getContratoBySuministro(s.id) : null;
+  const total = f.importe;
+
+  const handleDownload = async () => {
+    const filename = f.pdfFilename || f.pdfDraftFilename;
+    if (!filename) {
+      setDownloadError("Esta factura no tiene PDF disponible aún.");
+      setTimeout(() => setDownloadError(null), 3500);
+      return;
+    }
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      await window.downloadInvoicePdf(filename);
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 2200);
+    } catch (err) {
+      setDownloadError(err.message || "Error al descargar");
+      setTimeout(() => setDownloadError(null), 4000);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="ads-modal-overlay" onClick={onClose}>
+      <div className="ads-modal" onClick={e => e.stopPropagation()}>
+        <div className="ads-modal-head">
+          <div>
+            <div className="ads-eyebrow" style={{ marginBottom: 4 }}>Factura electrónica</div>
+            <h2 className="ads-h2" style={{ margin: 0 }}>{f.numero || f.id}</h2>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <StatusBadge estado={f.estado}/>
+            <button className="ads-icon-btn" onClick={onClose} aria-label="Cerrar"><Icon.close/></button>
+          </div>
+        </div>
+        <div className="ads-modal-body">
+          <div className="ads-invoice-doc">
+            <div className="ads-invoice-doc-head">
+              <div>
+                <ADSLogo size="sm"/>
+                <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 12, lineHeight: 1.6 }}>
+                  Comercializadora ADS Solutions S.L.<br/>
+                  atencionadministradores@ads-solutions.es
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 11, color: "var(--ink-3)", letterSpacing: 1.4 }}>FACTURA</div>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 14, fontWeight: 500, marginTop: 4 }}>{f.numero || f.id}</div>
+                <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 12 }}>Periodo</div>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>{f.periodo}</div>
+                <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 8 }}>Emisión · Vencimiento</div>
+                <div style={{ fontSize: 13 }}>{window.formatFecha(f.fechaEmision)} · {window.formatFecha(f.fechaVencimiento)}</div>
+              </div>
+            </div>
+            <div className="ads-invoice-grid">
+              <div>
+                <div className="ads-invoice-label">Titular</div>
+                <div style={{ fontWeight: 500 }}>{com?.nombre || f.comunidadNombre || "—"}</div>
+                {com?.direccion && <div style={{ fontSize: 12, color: "var(--ink-2)", marginTop: 4 }}>{com.direccion}</div>}
+                {com?.nif && <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2 }}>NIF: {com.nif}</div>}
+              </div>
+              <div>
+                <div className="ads-invoice-label">Suministro</div>
+                <div style={{ fontWeight: 500 }}>{s?.alias || f.alias || "—"}</div>
+                <div style={{ fontSize: 12, fontFamily: "var(--mono)", color: "var(--ink-2)", marginTop: 4 }}>{f.cups || s?.cups || "—"}</div>
+                {s?.tarifa && <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2 }}>Tarifa {s.tarifa}{s.potencia ? ` · ${window.formatNum(s.potencia, 2)} kW` : ""}</div>}
+              </div>
+            </div>
+            <table className="ads-invoice-table">
+              <thead><tr><th>Concepto</th><th style={{ textAlign: "right" }}>Importe</th></tr></thead>
+              <tbody>
+                <tr><td>Consumo de energía ({window.formatNum(f.consumoKwh)} kWh)</td><td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{window.formatEUR(f.desglose?.energia)}</td></tr>
+                <tr><td>Término de potencia{s?.potencia ? ` (${window.formatNum(s.potencia, 2)} kW)` : ""}</td><td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{window.formatEUR(f.desglose?.potencia)}</td></tr>
+                <tr><td>Impuesto sobre electricidad</td><td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{window.formatEUR(f.desglose?.impuestoElectricidad)}</td></tr>
+                <tr><td>Alquiler equipos de medida</td><td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{window.formatEUR(f.desglose?.alquilerEquipos)}</td></tr>
+                <tr><td>Otros conceptos regulados</td><td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{window.formatEUR(f.desglose?.otros)}</td></tr>
+                <tr><td style={{ color: "var(--ink-3)" }}>Subtotal sin IVA</td><td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--ink-3)" }}>{window.formatEUR((total||0) - (f.desglose?.iva||0))}</td></tr>
+                <tr><td>IVA</td><td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{window.formatEUR(f.desglose?.iva)}</td></tr>
+              </tbody>
+              <tfoot>
+                <tr><td>Total a pagar</td><td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{window.formatEUR(total)}</td></tr>
+              </tfoot>
+            </table>
+            {ct && <div style={{ marginTop: 22, padding: 14, background: "var(--bg-soft)", borderRadius: 8, fontSize: 11, color: "var(--ink-3)", lineHeight: 1.6 }}>Contrato {ct.numero}. Periodo facturación {f.periodo}.</div>}
+          </div>
+        </div>
+        <div className="ads-modal-foot">
+          <div style={{ fontSize: 12, color: "var(--ink-3)" }}>
+            Total <b style={{ color: "var(--ink-1)", fontSize: 18, marginLeft: 6, fontFamily: "var(--serif)" }}>{window.formatEUR(total)}</b>
+            {downloadError && <div style={{ fontSize: 11, color: "var(--danger)", marginTop: 4 }}>{downloadError}</div>}
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="ads-btn ads-btn-primary" onClick={handleDownload} disabled={downloading}>
+              {downloaded ? <><Icon.check/>Descargada</> : downloading ? <>Generando…</> : <><Icon.download/>Descargar PDF</>}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SuministrosView({ comunidadFilter, onSelect }) {
+  const [search, setSearch] = React.useState("");
+  const list = React.useMemo(() => {
+    let l = window.SUMINISTROS.map(s => ({ ...s, comunidad: window.getComunidad(s.comunidadId) }));
+    if (comunidadFilter !== "all") l = l.filter(s => s.comunidadId === comunidadFilter);
+    if (search) {
+      const q = search.toLowerCase();
+      l = l.filter(s => (s.alias||"").toLowerCase().includes(q) || (s.cups||"").toLowerCase().includes(q) || (s.comunidad?.nombre||"").toLowerCase().includes(q));
+    }
+    return l;
+  }, [comunidadFilter, search]);
+
+  return (
+    <div className="ads-page">
+      <PageHeader eyebrow="Cartera" title="Suministros" description="Listado completo de puntos de suministro (CUPS)"/>
+      <div className="ads-toolbar">
+        <div style={{ position: "relative", flex: 1, maxWidth: 360 }}>
+          <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)" }}><Icon.search/></span>
+          <input className="ads-input" placeholder="Buscar CUPS, alias o comunidad…" value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 38 }}/>
+        </div>
+      </div>
+      <div className="ads-supply-grid">
+        {list.map(s => {
+          const ct = window.getContratoBySuministro(s.id);
+          return (
+            <button key={s.id} className="ads-supply-card" onClick={() => ct && onSelect(ct.id)}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 11, color: "var(--ink-3)", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 4 }}>{s.comunidad?.nombre || "—"}</div>
+                  <div style={{ fontSize: 15, fontWeight: 500, color: "var(--ink-1)" }}>{s.alias}</div>
+                </div>
+                <StatusBadge estado={s.estado}/>
+              </div>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--ink-3)", marginTop: 10 }}>{s.cups}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
+                <div><div style={{ fontSize: 11, color: "var(--ink-3)" }}>Tarifa</div><div style={{ fontSize: 13, fontWeight: 500, marginTop: 2 }}>{s.tarifa}</div></div>
+                <div><div style={{ fontSize: 11, color: "var(--ink-3)" }}>Potencia</div><div style={{ fontSize: 13, fontWeight: 500, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>{window.formatNum(s.potencia, 2)} kW</div></div>
+                <div style={{ textAlign: "right" }}><div style={{ fontSize: 11, color: "var(--ink-3)" }}>Coste 12m</div><div style={{ fontSize: 13, fontWeight: 500, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>{window.formatEUR(s.costeAnual)}</div></div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      {list.length === 0 && <Empty description="Sin suministros que coincidan"/>}
+    </div>
+  );
+}
+
+function NotificacionesView() {
+  const [filter, setFilter] = React.useState("todas");
+  const list = window.NOTIFICACIONES.filter(n => filter === "todas" || (filter === "noleidas" && !n.leida));
+  return (
+    <div className="ads-page">
+      <PageHeader eyebrow="Avisos" title="Notificaciones" description="Centro de avisos del portal"/>
+      <div className="ads-segmented" style={{ alignSelf: "flex-start" }}>
+        <button className={filter === "todas" ? "active" : ""} onClick={() => setFilter("todas")}>Todas ({window.NOTIFICACIONES.length})</button>
+        <button className={filter === "noleidas" ? "active" : ""} onClick={() => setFilter("noleidas")}>No leídas ({window.NOTIFICACIONES.filter(n=>!n.leida).length})</button>
+      </div>
+      <Card padding={0}>
+        {list.length === 0 ? (
+          <Empty title="Aún no hay notificaciones" description="Aquí aparecerán los avisos de nuevas facturas, vencimientos e impagos cuando estén disponibles"/>
+        ) : list.map((n) => (
+          <div key={n.id} className={`ads-notif-row ${!n.leida ? "unread" : ""}`}>
+            <span className={`ads-notif-dot ads-notif-${n.tipo}`}>{n.tipo === "alerta" || n.tipo === "vencimiento" ? <Icon.alert/> : n.tipo === "factura" ? <Icon.invoice/> : n.tipo === "contrato" ? <Icon.contract/> : <Icon.bell/>}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+                <div style={{ fontSize: 14, fontWeight: 500, color: "var(--ink-1)" }}>{n.titulo}</div>
+                <div style={{ fontSize: 11, color: "var(--ink-3)", flexShrink: 0 }}>{window.formatFecha(n.fecha)}</div>
+              </div>
+              <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 4, lineHeight: 1.5 }}>{n.descripcion}</div>
+            </div>
+            {!n.leida && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--gold)", flexShrink: 0, alignSelf: "center" }}></span>}
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+}
+
+function PerfilView() {
+  const totalConsumoAnual = window.SUMINISTROS.reduce((s,x) => s + (x.consumoAnual||0), 0);
+  return (
+    <div className="ads-page">
+      <PageHeader eyebrow="Cuenta" title="Perfil del administrador"/>
+      <div className="ads-grid-2-1">
+        <Card>
+          <CardHeader title="Datos del AAFF"/>
+          <div style={{ display: "flex", gap: 18, alignItems: "center", marginBottom: 22 }}>
+            <span className="ads-avatar ads-avatar-lg">{window.ADMIN.iniciales}</span>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 500, fontFamily: "var(--serif)" }}>{window.ADMIN.nombre}</div>
+              {window.ADMIN.email && <div style={{ fontSize: 13, color: "var(--ink-3)" }}>{window.ADMIN.email}</div>}
+            </div>
+          </div>
+          <dl className="ads-dl">
+            <div><dt>Email contacto</dt><dd>{window.ADMIN.email || "—"}</dd></div>
+            <div><dt>Comercializadora</dt><dd>ADS Solutions</dd></div>
+          </dl>
+        </Card>
+        <Card>
+          <CardHeader title="Cartera gestionada"/>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+            <div><div style={{ fontSize: 28, fontFamily: "var(--serif)", color: "var(--gold-deep)" }}>{window.COMUNIDADES.length}</div><div style={{ fontSize: 12, color: "var(--ink-3)" }}>Comunidades</div></div>
+            <div><div style={{ fontSize: 28, fontFamily: "var(--serif)", color: "var(--gold-deep)" }}>{window.SUMINISTROS.length}</div><div style={{ fontSize: 12, color: "var(--ink-3)" }}>Suministros</div></div>
+            <div><div style={{ fontSize: 28, fontFamily: "var(--serif)", color: "var(--gold-deep)" }}>{window.CONTRATOS.length}</div><div style={{ fontSize: 12, color: "var(--ink-3)" }}>Contratos</div></div>
+            <div><div style={{ fontSize: 28, fontFamily: "var(--serif)", color: "var(--gold-deep)" }}>{window.formatNum(totalConsumoAnual/1000,0)}<span style={{ fontSize: 14 }}>k</span></div><div style={{ fontSize: 12, color: "var(--ink-3)" }}>kWh anuales</div></div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   8. LOADING / ERROR / APP ROOT
+   ═══════════════════════════════════════════════════════════════════ */
+function LoadingScreen() {
+  return (
+    <div className="ads-loading-screen">
+      <ADSLogo size="lg"/>
+      <div className="ads-loading-spinner"></div>
+      <div className="ads-loading-msg">Cargando portal…</div>
+    </div>
+  );
+}
+
+function ErrorScreen({ message, onRetry }) {
+  return (
+    <div className="ads-error-screen">
+      <div className="ads-error-icon"><Icon.alert style={{ width: 24, height: 24 }}/></div>
+      <h2 className="ads-error-title">No se pudo cargar el portal</h2>
+      <div className="ads-error-detail">{message || "Error desconocido"}</div>
+      <button className="ads-btn ads-btn-primary" onClick={onRetry}>Reintentar</button>
+      <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 12, textAlign: "center", maxWidth: 440, lineHeight: 1.6 }}>
+        Si el problema persiste, contacta con tu gestor en ADS Solutions.
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [view, setView] = React.useState("dashboard");
+  const [comunidadFilter, setComunidadFilter] = React.useState("all");
+  const [contratoSel, setContratoSel] = React.useState(null);
+  const [facturaSel, setFacturaSel] = React.useState(null);
+
+  const handleNav = (id) => { setView(id); setContratoSel(null); };
+  const handleSelectContrato = (id) => { setContratoSel(id); setView("contrato-detalle"); };
+
+  return (
+    <div className="ads-app">
+      <Sidebar current={view === "contrato-detalle" ? "contratos" : view} onNav={handleNav} comunidadFilter={comunidadFilter} setComunidadFilter={setComunidadFilter}/>
+      <main className="ads-main">
+        <Header comunidad={comunidadFilter} onProfile={() => setView("perfil")} onNotif={() => setView("notificaciones")}/>
+        {view === "dashboard"          && <Dashboard comunidadFilter={comunidadFilter} onNav={handleNav} onOpenInvoice={(id) => setFacturaSel(id)}/>}
+        {view === "contratos"          && <ContratosView comunidadFilter={comunidadFilter} onSelect={handleSelectContrato}/>}
+        {view === "contrato-detalle"   && <ContratoDetalle contratoId={contratoSel} onBack={() => setView("contratos")} onOpenInvoice={(id) => setFacturaSel(id)}/>}
+        {view === "facturas"           && <FacturasView comunidadFilter={comunidadFilter} onOpenInvoice={(id) => setFacturaSel(id)}/>}
+        {view === "suministros"        && <SuministrosView comunidadFilter={comunidadFilter} onSelect={handleSelectContrato}/>}
+        {view === "notificaciones"     && <NotificacionesView/>}
+        {view === "perfil"             && <PerfilView/>}
+      </main>
+      <InvoiceModal facturaId={facturaSel} onClose={() => setFacturaSel(null)}/>
+    </div>
+  );
+}
+
+function AppRoot() {
+  const [state, setState] = React.useState("loading");
+  const [error, setError] = React.useState(null);
+
+  const load = React.useCallback(() => {
+    setState("loading");
+    setError(null);
+    bootstrapData()
+      .then(() => setState("ready"))
+      .catch(err => { console.error(err); setError(err.message); setState("error"); });
+  }, []);
+
+  React.useEffect(() => { load(); }, [load]);
+
+  if (state === "loading") return <LoadingScreen/>;
+  if (state === "error")   return <ErrorScreen message={error} onRetry={load}/>;
+  return <App/>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<AppRoot/>);
+</script>
+</body>
+</html>
