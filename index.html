@@ -278,13 +278,13 @@ async function bootstrapData() {
     telefono: "",
   };
 
-  const FACTURAS = facturasRes.FACTURAS || [];
+    const rawFacturas = facturasRes.FACTURAS || [];
 
   // Derivamos costeAnual de cada suministro a partir de las facturas del último año.
   const today = new Date();
   const oneYearAgo = new Date(today.getFullYear()-1, today.getMonth(), today.getDate());
   const costePerSuministro = {};
-  FACTURAS.forEach(f => {
+  rawFacturas.forEach(f => {
     if (!f.fechaEmision) return;
     const d = new Date(f.fechaEmision);
     if (isNaN(d) || d < oneYearAgo) return;
@@ -298,6 +298,24 @@ async function bootstrapData() {
 
   // Comunidades: añadimos vecinos:0 (no expuesto por Nemon, oculto en UI cuando vale 0).
   const COMUNIDADES = (contratosRes.COMUNIDADES || []).map(c => ({ ...c, vecinos: 0 }));
+
+  // Enriquecemos las facturas con comunidadId/comunidadNombre/alias resolviendo
+  // por suministroId contra los datos ya cargados desde /api/contratos.
+  // Esto evita una segunda llamada a Nemon en el flujo de facturas.
+  const suministroById = Object.fromEntries(SUMINISTROS.map(s => [s.id, s]));
+  const comunidadById  = Object.fromEntries(COMUNIDADES.map(c => [c.id, c]));
+  const FACTURAS = rawFacturas.map(f => {
+    const s = suministroById[f.suministroId];
+    const comunidadId = f.comunidadId || s?.comunidadId || '';
+    const c = comunidadById[comunidadId];
+    return {
+      ...f,
+      comunidadId,
+      comunidadNombre: f.comunidadNombre || c?.nombre || '',
+      alias: f.alias || s?.alias || '',
+      cups: f.cups || s?.cups || '',
+    };
+  });
 
   // Contratos: añadimos placeholders de precios (Nemon no los expone aquí; pendiente).
   const CONTRATOS = (contratosRes.CONTRATOS || []).map(c => ({
