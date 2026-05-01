@@ -12,81 +12,19 @@
       "name": "Webhook GET /api/facturas",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        -2000,
-        1888
-      ],
+      "position": [-2000, 1888],
       "webhookId": "api-facturas-hook",
-      "notes": "Cambia allowedOrigins a https://web.plena-energia.com en producción.\n\nQuery params soportados (todos opcionales): cups, init_date, end_date, bill_date_init, bill_date_end, limit, offset, bill_status, payment_status."
+      "notes": "Cambia allowedOrigins a https://web.plena-energia.com en producción."
     },
     {
       "parameters": {
-        "jsCode": "const headers = $input.first().json.headers || {};\nconst aaff_key = (headers['x-aaff-key'] || '').trim();\n\nif (!aaff_key) {\n  return [{ json: { _status: 400, error: 'Missing X-AAFF-Key header' } }];\n}\nif (!/^[A-Za-z0-9]{20,40}$/.test(aaff_key)) {\n  return [{ json: { _status: 400, error: 'Invalid X-AAFF-Key format' } }];\n}\n\n// Recoge filtros opcionales de query\nconst q = $input.first().json.query || {};\nconst filters = {\n  cups: q.cups || '',\n  init_date: q.init_date || '',\n  end_date: q.end_date || '',\n  bill_date_init: q.bill_date_init || '',\n  bill_date_end: q.bill_date_end || '',\n  limit: q.limit ? Number(q.limit) : 200,\n  offset: q.offset ? Number(q.offset) : 0,\n  bill_status: q.bill_status || '',\n  payment_status: q.payment_status || '',\n};\n\nreturn [{ json: { _status: 200, aaff_key, filters } }];\n"
+        "jsCode": "const headers = $input.first().json.headers || {};\nconst aaff_key = (headers['x-aaff-key'] || '').trim();\n\nif (!aaff_key) {\n  return [{ json: { _status: 400, error: 'Missing X-AAFF-Key header' } }];\n}\nif (!/^[A-Za-z0-9]{20,40}$/.test(aaff_key)) {\n  return [{ json: { _status: 400, error: 'Invalid X-AAFF-Key format' } }];\n}\n\nconst q = $input.first().json.query || {};\nconst filters = {\n  cups: q.cups || '',\n  init_date: q.init_date || '',\n  end_date: q.end_date || '',\n  bill_date_init: q.bill_date_init || '',\n  bill_date_end: q.bill_date_end || '',\n  limit: q.limit ? Number(q.limit) : 200,\n  offset: q.offset ? Number(q.offset) : 0,\n  bill_status: q.bill_status || '',\n  payment_status: q.payment_status || '',\n};\n\nreturn [{ json: { _status: 200, aaff_key, filters } }];\n"
       },
       "id": "0f833acc-3281-4b32-a641-b19b56236e1f",
       "name": "Validate Key + Filters",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -1776,
-        1888
-      ]
-    },
-    {
-      "parameters": {
-        "url": "https://solutionsads-tradeenergy.nemon2ib.com/apirest/contracts",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            {
-              "name": "channel_code_filter",
-              "value": "={{ $json.channel_code }}"
-            },
-            {
-              "name": "total_results",
-              "value": "1000"
-            }
-          ]
-        },
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          },
-          "timeout": 30000
-        }
-      },
-      "id": "c5baf18a-cfb8-4273-9043-e3d5d6ed8a01",
-      "name": "Nemon · GET contracts (resolve channel_name + map)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        -672,
-        1728
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "AlrF6ceGpNizYEyS",
-          "name": "Nemon ADS"
-        }
-      },
-      "notes": "Tras importar: en Authentication > Header Auth selecciona el credential 'Nemon Token'."
-    },
-    {
-      "parameters": {
-        "jsCode": "// Construye channel_name + contractId→id_company map\nconst data = $input.first().json;\nconst contracts = data.listContractsExtended || [];\n\nif (!contracts.length) {\n  return [{ json: { _status: 404, error: 'No hay contratos para este canal — sin facturas posibles', channel_name: '', contractToCompany: {}, contractToCups: {}, contractToAlias: {} } }];\n}\n\nconst channel_name = contracts[0].channel_name || '';\nconst contractToCompany = {};\nconst contractToCups = {};\nconst contractToAlias = {};\nconst contractToComunidadNombre = {};\n\n// Reusamos la misma lógica de alias del workflow contratos\nconst ALIAS_MAP = {\n  'ASC':'Ascensor','ESC':'Escalera','PRK':'Parking','PEK':'Parking','POR':'Portería','PORT':'Portería',\n  'BJO':'Bajos','GARAJE':'Garaje','LOCALES':'Locales','LOCAL':'Local','SG':'Servicios generales',\n  'COMUN':'Servicios comunes','PIS':'Piscina'\n};\nfunction deriveAlias(siteAddress) {\n  if (!siteAddress) return 'Suministro';\n  const parts = String(siteAddress).split(',').map(p=>p.trim()).filter(Boolean);\n  const last = parts[parts.length-1] || '';\n  const upper = last.toUpperCase();\n  if (ALIAS_MAP[upper]) return ALIAS_MAP[upper];\n  const tokens = upper.split(/\\s+/);\n  if (ALIAS_MAP[tokens[0]]) {\n    const head = ALIAS_MAP[tokens[0]];\n    const tail = tokens.slice(1).join(' ');\n    return tail ? `${head} ${tail.toLowerCase()}` : head;\n  }\n  return last.charAt(0).toUpperCase() + last.slice(1).toLowerCase();\n}\n\nfor (const c of contracts) {\n  const id = String(c.id);\n  contractToCompany[id] = String(c.id_company || '0');\n  contractToCups[id] = c.CUPS || '';\n  contractToAlias[id] = deriveAlias(c.site_address);\n  contractToComunidadNombre[id] = c.name || c.account_holder || '';\n}\n\n// Pasamos los filtros del paso anterior\nconst prev = $('Resolve channel_code1').first().json;\n\nreturn [{\n  json: {\n    _status: 200,\n    channel_name,\n    filters: prev.filters,\n    contractToCompany,\n    contractToCups,\n    contractToAlias,\n    contractToComunidadNombre,\n  }\n}];\n"
-      },
-      "id": "44160c4f-2a1d-4095-86f5-ea60e49f550e",
-      "name": "Build Contract Map",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -448,
-        1728
-      ]
+      "position": [-1776, 1888]
     },
     {
       "parameters": {
@@ -96,22 +34,10 @@
         "contentType": "multipart-form-data",
         "bodyParameters": {
           "parameters": [
-            {
-              "name": "token",
-              "value": "c9ddab777f29eb769abea79645ac1f3b9ce5a37f"
-            },
-            {
-              "name": "module",
-              "value": "Billing"
-            },
-            {
-              "name": "class",
-              "value": "Billing"
-            },
-            {
-              "name": "action",
-              "value": "getBills"
-            },
+            { "name": "token", "value": "c9ddab777f29eb769abea79645ac1f3b9ce5a37f" },
+            { "name": "module", "value": "Billing" },
+            { "name": "class", "value": "Billing" },
+            { "name": "action", "value": "getBills" },
             {
               "name": "data",
               "value": "={{ JSON.stringify(Object.fromEntries(Object.entries({\n  channel_name: $json.channel_name,\n  cups: $json.filters.cups,\n  init_date: $json.filters.init_date,\n  end_date: $json.filters.end_date,\n  bill_date_init: $json.filters.bill_date_init,\n  bill_date_end: $json.filters.bill_date_end,\n  limit: $json.filters.limit,\n  offset: $json.filters.offset,\n  bill_status: $json.filters.bill_status,\n  payment_status: $json.filters.payment_status,\n}).filter(([_,v]) => v !== '' && v !== undefined && v !== null))) }}"
@@ -119,11 +45,7 @@
           ]
         },
         "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          },
+          "response": { "response": { "responseFormat": "json" } },
           "timeout": 60000
         }
       },
@@ -131,43 +53,24 @@
       "name": "Nemon · POST getBills",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        -240,
-        1728
-      ],
-      "notes": "Nemon API: multipart/form-data. Campos: token, module, class, action y 'data' como string JSON con los filtros."
+      "position": [-448, 1808]
     },
     {
       "parameters": {
-        "jsCode": "// Transform Nemon bills → frontend FACTURAS\nconst input = $input.first().json;\nconst bills = input.list_bills || (input.error && []) || [];\n\n// Mapas que vienen de Build Contract Map\nconst maps = $('Build Contract Map').first().json;\nconst contractToCompany = maps.contractToCompany || {};\nconst contractToCups    = maps.contractToCups    || {};\nconst contractToAlias   = maps.contractToAlias   || {};\nconst contractToComunidadNombre = maps.contractToComunidadNombre || {};\n\nfunction toNum(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }\nfunction toFixed2(n) { return Math.round(n * 100) / 100; }\n\nconst MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];\nfunction formatPeriodo(initStr, endStr) {\n  if (!initStr || !endStr || initStr === '0000-00-00') return '';\n  const ini = new Date(initStr);\n  const fin = new Date(endStr);\n  if (isNaN(ini) || isNaN(fin)) return `${initStr} – ${endStr}`;\n  const sameMonth = ini.getMonth() === fin.getMonth() && ini.getFullYear() === fin.getFullYear();\n  if (sameMonth) return `${MESES[ini.getMonth()]} ${ini.getFullYear()}`;\n  return `${MESES[ini.getMonth()]} ${ini.getFullYear()} – ${MESES[fin.getMonth()]} ${fin.getFullYear()}`;\n}\nfunction parseDateParts(dateStr) {\n  // Devuelve {year, mesIdx} o {year:null, mesIdx:null} si no parseable.\n  // Usamos init_period (inicio del periodo facturado) como referencia primaria.\n  if (!dateStr || dateStr === '0000-00-00' || dateStr === '1900-01-01') return { year: null, mesIdx: null };\n  const d = new Date(dateStr);\n  if (isNaN(d)) return { year: null, mesIdx: null };\n  return { year: d.getFullYear(), mesIdx: d.getMonth() };\n}\n\n// Mapear estado de pago a algo de UI\nfunction mapEstado(payment_status, bill_maturity) {\n  const ps = (payment_status || '').toLowerCase();\n  if (ps.includes('pagad')) return 'pagada';\n  if (ps.includes('impag')) return 'vencida';\n  if (ps.includes('pendient')) {\n    // Si la fecha de vencimiento ya pasó, es vencida\n    if (bill_maturity && bill_maturity !== '0000-00-00' && bill_maturity !== '1900-01-01') {\n      const d = new Date(bill_maturity);\n      if (!isNaN(d) && d < new Date()) return 'vencida';\n    }\n    return 'pendiente';\n  }\n  return ps || 'desconocido';\n}\n\nconst FACTURAS = bills.map(b => {\n  const total = toNum(b.total);\n  const energia = toNum(b.energy);\n  const potencia = toNum(b.potence);\n  const impuestoElectricidad = toNum(b.electric_tax);\n  const alquilerEquipos = toNum(b.rents);\n  const iva = toNum(b.vat_tax);\n  const otros = toFixed2(\n    toNum(b.regularization) + toNum(b.fees) + toNum(b.others_with_electric_tax) +\n    toNum(b.others_without_electric_tax) + toNum(b.excess_potence) + toNum(b.excess_reactive)\n  );\n\n  const consumoKwh = ['energy_p1','energy_p2','energy_p3','energy_p4','energy_p5','energy_p6']\n    .reduce((acc, k) => acc + toNum(b[k]), 0);\n\n  const contractId = String(b.contract_idcontract || '');\n  // year/mesIdx → preferimos init_period (mes facturado), fallback a emission_date.\n  const fromInit = parseDateParts(b.init_period);\n  const fromEmis = parseDateParts(b.emission_date);\n  const year   = fromInit.year   != null ? fromInit.year   : fromEmis.year;\n  const mesIdx = fromInit.mesIdx != null ? fromInit.mesIdx : fromEmis.mesIdx;\n\n  return {\n    id: String(b.id),\n    numero: b.bill_number || b.pseudo_bill_number || '',\n    suministroId: contractId,\n    cups: b.site_code || contractToCups[contractId] || '',\n    comunidadId: contractToCompany[contractId] || '',\n    comunidadNombre: contractToComunidadNombre[contractId] || '',\n    alias: contractToAlias[contractId] || '',\n    fechaEmision: b.emission_date || '',\n    fechaVencimiento: b.bill_maturity || '',\n    periodo: formatPeriodo(b.init_period, b.end_period),\n    initPeriodo: b.init_period || '',\n    endPeriodo: b.end_period || '',\n    year,\n    mesIdx,\n    consumoKwh: Math.round(consumoKwh),\n    importe: toFixed2(total),\n    estado: mapEstado(b.payment_status, b.bill_maturity),\n    estadoGestion: b.managment_name || '',\n    desglose: {\n      energia: toFixed2(energia),\n      potencia: toFixed2(potencia),\n      impuestoElectricidad: toFixed2(impuestoElectricidad),\n      alquilerEquipos: toFixed2(alquilerEquipos),\n      iva: toFixed2(iva),\n      otros,\n    },\n    // Filenames para descargar PDF (frontend los pasará a /api/factura/pdf)\n    pdfFilename: b.link || '',\n    pdfDraftFilename: b.link_draft || '',\n    contractCode: b.contract_code || '',\n    tarifa: b.tariff || '',\n  };\n});\n\nreturn [{\n  json: {\n    ok: true,\n    counts: { facturas: FACTURAS.length },\n    FACTURAS,\n  }\n}];\n"
+        "jsCode": "// Transform Nemon bills → frontend FACTURAS\n// El enriquecimiento por contrato (comunidad, alias, etc.) lo hace el frontend\n// vía window.getSuministro(suministroId) usando los datos ya cargados desde /api/contratos.\nconst input = $input.first().json;\nconst bills = input.list_bills || (input.error && []) || [];\n\nfunction toNum(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }\nfunction toFixed2(n) { return Math.round(n * 100) / 100; }\n\nconst MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];\nfunction formatPeriodo(initStr, endStr) {\n  if (!initStr || !endStr || initStr === '0000-00-00') return '';\n  const ini = new Date(initStr);\n  const fin = new Date(endStr);\n  if (isNaN(ini) || isNaN(fin)) return `${initStr} – ${endStr}`;\n  const sameMonth = ini.getMonth() === fin.getMonth() && ini.getFullYear() === fin.getFullYear();\n  if (sameMonth) return `${MESES[ini.getMonth()]} ${ini.getFullYear()}`;\n  return `${MESES[ini.getMonth()]} ${ini.getFullYear()} – ${MESES[fin.getMonth()]} ${fin.getFullYear()}`;\n}\nfunction parseDateParts(dateStr) {\n  if (!dateStr || dateStr === '0000-00-00' || dateStr === '1900-01-01') return { year: null, mesIdx: null };\n  const d = new Date(dateStr);\n  if (isNaN(d)) return { year: null, mesIdx: null };\n  return { year: d.getFullYear(), mesIdx: d.getMonth() };\n}\n\nfunction mapEstado(payment_status, bill_maturity) {\n  const ps = (payment_status || '').toLowerCase();\n  if (ps.includes('pagad')) return 'pagada';\n  if (ps.includes('impag')) return 'vencida';\n  if (ps.includes('pendient')) {\n    if (bill_maturity && bill_maturity !== '0000-00-00' && bill_maturity !== '1900-01-01') {\n      const d = new Date(bill_maturity);\n      if (!isNaN(d) && d < new Date()) return 'vencida';\n    }\n    return 'pendiente';\n  }\n  return ps || 'desconocido';\n}\n\nconst FACTURAS = bills.map(b => {\n  const total = toNum(b.total);\n  const energia = toNum(b.energy);\n  const potencia = toNum(b.potence);\n  const impuestoElectricidad = toNum(b.electric_tax);\n  const alquilerEquipos = toNum(b.rents);\n  const iva = toNum(b.vat_tax);\n  const otros = toFixed2(\n    toNum(b.regularization) + toNum(b.fees) + toNum(b.others_with_electric_tax) +\n    toNum(b.others_without_electric_tax) + toNum(b.excess_potence) + toNum(b.excess_reactive)\n  );\n\n  const consumoKwh = ['energy_p1','energy_p2','energy_p3','energy_p4','energy_p5','energy_p6']\n    .reduce((acc, k) => acc + toNum(b[k]), 0);\n\n  const contractId = String(b.contract_idcontract || '');\n  const fromInit = parseDateParts(b.init_period);\n  const fromEmis = parseDateParts(b.emission_date);\n  const year   = fromInit.year   != null ? fromInit.year   : fromEmis.year;\n  const mesIdx = fromInit.mesIdx != null ? fromInit.mesIdx : fromEmis.mesIdx;\n\n  return {\n    id: String(b.id),\n    numero: b.bill_number || b.pseudo_bill_number || '',\n    suministroId: contractId,\n    cups: b.site_code || '',\n    fechaEmision: b.emission_date || '',\n    fechaVencimiento: b.bill_maturity || '',\n    periodo: formatPeriodo(b.init_period, b.end_period),\n    initPeriodo: b.init_period || '',\n    endPeriodo: b.end_period || '',\n    year,\n    mesIdx,\n    consumoKwh: Math.round(consumoKwh),\n    importe: toFixed2(total),\n    estado: mapEstado(b.payment_status, b.bill_maturity),\n    estadoGestion: b.managment_name || '',\n    desglose: {\n      energia: toFixed2(energia),\n      potencia: toFixed2(potencia),\n      impuestoElectricidad: toFixed2(impuestoElectricidad),\n      alquilerEquipos: toFixed2(alquilerEquipos),\n      iva: toFixed2(iva),\n      otros,\n    },\n    pdfFilename: b.link || '',\n    pdfDraftFilename: b.link_draft || '',\n    contractCode: b.contract_code || '',\n    tarifa: b.tariff || '',\n  };\n});\n\nreturn [{ json: { ok: true, counts: { facturas: FACTURAS.length }, FACTURAS } }];\n"
       },
       "id": "1c42be83-2e00-41d1-ad27-eedc5110bc48",
       "name": "Transform Bills → Frontend",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -16,
-        1728
-      ]
+      "position": [-224, 1808]
     },
     {
       "parameters": {
         "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
           "conditions": [
-            {
-              "id": "cond-key-ok",
-              "leftValue": "={{ $json._status }}",
-              "rightValue": 200,
-              "operator": {
-                "type": "number",
-                "operation": "equals"
-              }
-            }
+            { "id": "cond-key-ok", "leftValue": "={{ $json._status }}", "rightValue": 200, "operator": { "type": "number", "operation": "equals" } }
           ],
           "combinator": "and"
         },
@@ -177,10 +80,7 @@
       "name": "Key Valid?2",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [
-        -1552,
-        1888
-      ]
+      "position": [-1552, 1888]
     },
     {
       "parameters": {
@@ -194,10 +94,7 @@
         },
         "filters": {
           "conditions": [
-            {
-              "keyName": "aaff_key",
-              "keyValue": "={{ $json.aaff_key }}"
-            }
+            { "keyName": "aaff_key", "keyValue": "={{ $json.aaff_key }}" }
           ]
         }
       },
@@ -205,43 +102,24 @@
       "name": "Find AAFF Row2",
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
-      "position": [
-        -1328,
-        1808
-      ],
-      "notes": "Tras importar: selecciona la Data Table 'aaff'."
+      "position": [-1328, 1808]
     },
     {
       "parameters": {
-        "jsCode": "// Mete channel_code y filtros en el item de salida\nconst rows = $input.all();\nif (!rows.length) return [{ json: { _status: 404, error: 'AAFF not found' } }];\nconst row = rows[0].json;\nif (row.activo === false || row.activo === 'false' || row.activo === 0) {\n  return [{ json: { _status: 403, error: 'AAFF deshabilitado' } }];\n}\n\n// Recuperamos los filtros que metimos en el Code anterior\n// Nota: el Data Table devuelve solo las columnas; los filtros viajan via $('Validate Key + Filters').first().json.filters\nconst prev = $('Validate Key + Filters').first().json;\n\nreturn [{\n  json: {\n    _status: 200,\n    channel_code: row.channel_code,\n    filters: prev.filters,\n  }\n}];\n"
+        "jsCode": "// Resuelve channel_name directamente desde la tabla AAFF.\nconst rows = $input.all();\nif (!rows.length) return [{ json: { _status: 404, error: 'AAFF not found' } }];\nconst row = rows[0].json;\nif (row.activo === false || row.activo === 'false' || row.activo === 0) {\n  return [{ json: { _status: 403, error: 'AAFF deshabilitado' } }];\n}\n\nconst channel_name = (row.channel_name || row.nombre || '').toString().trim();\nif (!channel_name) {\n  return [{ json: { _status: 404, error: 'AAFF sin channel_name configurado' } }];\n}\n\nconst prev = $('Validate Key + Filters').first().json;\n\nreturn [{ json: { _status: 200, channel_name, filters: prev.filters } }];\n"
       },
       "id": "d66df59d-70a6-4b43-ba57-e9788812d233",
-      "name": "Resolve channel_code1",
+      "name": "Resolve channel_name",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -1120,
-        1808
-      ]
+      "position": [-1120, 1808]
     },
     {
       "parameters": {
         "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
           "conditions": [
-            {
-              "id": "cond-resolved-ok",
-              "leftValue": "={{ $json._status }}",
-              "rightValue": 200,
-              "operator": {
-                "type": "number",
-                "operation": "equals"
-              }
-            }
+            { "id": "cond-resolved-ok", "leftValue": "={{ $json._status }}", "rightValue": 200, "operator": { "type": "number", "operation": "equals" } }
           ],
           "combinator": "and"
         },
@@ -251,191 +129,65 @@
       "name": "Resolved?1",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [
-        -896,
-        1808
-      ]
+      "position": [-896, 1808]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ $json }}",
-        "options": {
-          "responseCode": 200
-        }
+        "options": { "responseCode": 200 }
       },
       "id": "f15bbc72-12bf-4224-8af6-abfbedac66cf",
       "name": "Respond OK3",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [
-        208,
-        1728
-      ]
+      "position": [0, 1808]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ { ok: false, error: $json.error } }}",
-        "options": {
-          "responseCode": "={{ $json._status }}"
-        }
+        "options": { "responseCode": "={{ $json._status }}" }
       },
       "id": "ac7fb928-2733-450a-b8ef-7d8c2e2ecb19",
       "name": "Respond Error - Bad Request1",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [
-        -1328,
-        2048
-      ]
+      "position": [-1328, 2048]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ { ok: false, error: $json.error } }}",
-        "options": {
-          "responseCode": "={{ $json._status }}"
-        }
+        "options": { "responseCode": "={{ $json._status }}" }
       },
       "id": "4afec0d3-945d-496e-86cd-33d2dc0c6381",
       "name": "Respond Error - Not Found1",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [
-        -672,
-        1968
-      ]
+      "position": [-672, 1968]
     }
   ],
   "connections": {
-    "Webhook GET /api/facturas": {
-      "main": [
-        [
-          {
-            "node": "Validate Key + Filters",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Validate Key + Filters": {
-      "main": [
-        [
-          {
-            "node": "Key Valid?2",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Nemon · GET contracts (resolve channel_name + map)": {
-      "main": [
-        [
-          {
-            "node": "Build Contract Map",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Build Contract Map": {
-      "main": [
-        [
-          {
-            "node": "Nemon · POST getBills",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Nemon · POST getBills": {
-      "main": [
-        [
-          {
-            "node": "Transform Bills → Frontend",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Transform Bills → Frontend": {
-      "main": [
-        [
-          {
-            "node": "Respond OK3",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
+    "Webhook GET /api/facturas": { "main": [[{ "node": "Validate Key + Filters", "type": "main", "index": 0 }]] },
+    "Validate Key + Filters": { "main": [[{ "node": "Key Valid?2", "type": "main", "index": 0 }]] },
     "Key Valid?2": {
       "main": [
-        [
-          {
-            "node": "Find AAFF Row2",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Respond Error - Bad Request1",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{ "node": "Find AAFF Row2", "type": "main", "index": 0 }],
+        [{ "node": "Respond Error - Bad Request1", "type": "main", "index": 0 }]
       ]
     },
-    "Find AAFF Row2": {
-      "main": [
-        [
-          {
-            "node": "Resolve channel_code1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Resolve channel_code1": {
-      "main": [
-        [
-          {
-            "node": "Resolved?1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
+    "Find AAFF Row2": { "main": [[{ "node": "Resolve channel_name", "type": "main", "index": 0 }]] },
+    "Resolve channel_name": { "main": [[{ "node": "Resolved?1", "type": "main", "index": 0 }]] },
     "Resolved?1": {
       "main": [
-        [
-          {
-            "node": "Nemon · GET contracts (resolve channel_name + map)",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Respond Error - Not Found1",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{ "node": "Nemon · POST getBills", "type": "main", "index": 0 }],
+        [{ "node": "Respond Error - Not Found1", "type": "main", "index": 0 }]
       ]
-    }
+    },
+    "Nemon · POST getBills": { "main": [[{ "node": "Transform Bills → Frontend", "type": "main", "index": 0 }]] },
+    "Transform Bills → Frontend": { "main": [[{ "node": "Respond OK3", "type": "main", "index": 0 }]] }
   },
   "pinData": {},
-  "meta": {
-    "instanceId": "d9ea544fdadf26c0cb1af2a2170c8ad35272e6ce482d9566666c10e545e2572e"
-  }
+  "meta": { "instanceId": "d9ea544fdadf26c0cb1af2a2170c8ad35272e6ce482d9566666c10e545e2572e" }
 }
