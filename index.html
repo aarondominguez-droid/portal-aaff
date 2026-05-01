@@ -370,7 +370,6 @@ const Icon = {
   dashboard:(p)=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>),
   contract:(p)=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9 13h6M9 17h4"/></svg>),
   invoice:(p)=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}><path d="M5 3h11l3 3v15H5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>),
-  supply:(p)=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg>),
   bell:(p)=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>),
   user:(p)=>(<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>),
   search:(p)=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...p}><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>),
@@ -423,14 +422,31 @@ function ADSLogo({ size = "md", onlyMark = false }) {
   );
 }
 
+function shortenComunidad(nombre) {
+  if (!nombre) return "";
+  let s = String(nombre).trim();
+  s = s.replace(/^(CCPP|C\.?\s?P\.?)\s+/i, "");
+  s = s.replace(/^(CARRER|AVINGUDA|AVDA\.?|AVDA|AV\.?|CAMI|CAMÍ|PLAÇA|PLAZA|PL\.?|PASSEIG|PG\.?|RAMBLA|RBLA\.?|RONDA|TRAVESSERA|TRVA\.?|CALLE|C\/)\s+/i, "");
+  return s.trim() || nombre;
+}
+
 function Sidebar({ current, onNav, comunidadFilter, setComunidadFilter }) {
+  const [comunidadQuery, setComunidadQuery] = React.useState("");
   const items = [
     { id: "dashboard",      label: "Dashboard",      icon: Icon.dashboard },
     { id: "contratos",      label: "Contratos",      icon: Icon.contract, badge: window.CONTRATOS.filter(c=>c.estado!=="activo" && c.estado!=="aceptado").length || 0 },
     { id: "facturas",       label: "Facturas",       icon: Icon.invoice,  badge: window.FACTURAS.filter(f=>f.estado==="vencida").length || 0 },
-    { id: "suministros",    label: "Suministros",    icon: Icon.supply },
     { id: "notificaciones", label: "Notificaciones", icon: Icon.bell,     badge: window.NOTIFICACIONES.filter(n=>!n.leida).length || 0 },
   ];
+  const comunidadesFiltradas = React.useMemo(() => {
+    const q = comunidadQuery.trim().toLowerCase();
+    if (!q) return window.COMUNIDADES;
+    return window.COMUNIDADES.filter(c =>
+      (c.nombre||"").toLowerCase().includes(q) ||
+      (c.direccion||"").toLowerCase().includes(q) ||
+      (c.nif||"").toLowerCase().includes(q)
+    );
+  }, [comunidadQuery]);
   return (
     <aside className="ads-sidebar">
       <div style={{ padding: "26px 24px 20px" }}><ADSLogo size="md"/></div>
@@ -445,13 +461,30 @@ function Sidebar({ current, onNav, comunidadFilter, setComunidadFilter }) {
         <button className={`ads-nav-item ${comunidadFilter === "all" ? "active" : ""}`} onClick={() => setComunidadFilter("all")}>
           <Icon.building/><span>Todas las comunidades</span><span className="ads-nav-count">{window.COMUNIDADES.length}</span>
         </button>
-        {window.COMUNIDADES.map(c => (
-          <button key={c.id} className={`ads-nav-item ads-nav-sub ${comunidadFilter === c.id ? "active" : ""}`} onClick={() => setComunidadFilter(c.id)} title={c.direccion}>
-            <span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--gold)", flexShrink: 0, marginLeft: 4 }}></span>
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.nombre}</span>
-            <span className="ads-nav-count">{c.suministros}</span>
-          </button>
-        ))}
+        <div style={{ position: "relative", padding: "6px 6px 8px" }}>
+          <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)", pointerEvents: "none" }}><Icon.search/></span>
+          <input
+            className="ads-input"
+            placeholder="Filtrar comunidad…"
+            value={comunidadQuery}
+            onChange={e => setComunidadQuery(e.target.value)}
+            style={{ paddingLeft: 36, height: 32, fontSize: 12, width: "100%" }}
+          />
+        </div>
+        {comunidadesFiltradas.map(c => {
+          const corto = shortenComunidad(c.nombre);
+          const tip = c.nombre + (c.direccion ? ` · ${c.direccion}` : "");
+          return (
+            <button key={c.id} className={`ads-nav-item ads-nav-sub ${comunidadFilter === c.id ? "active" : ""}`} onClick={() => setComunidadFilter(c.id)} title={tip}>
+              <span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--gold)", flexShrink: 0, marginLeft: 4 }}></span>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{corto}</span>
+              <span className="ads-nav-count">{c.suministros}</span>
+            </button>
+          );
+        })}
+        {comunidadesFiltradas.length === 0 && (
+          <div style={{ padding: "10px 14px", fontSize: 12, color: "var(--ink-3)" }}>Sin resultados</div>
+        )}
       </nav>
       <div style={{ padding: "16px 20px", borderTop: "1px solid var(--line)", fontSize: 11, color: "var(--ink-3)", letterSpacing: 0.4 }}>
         <div>Portal · ADS Solutions</div>
@@ -1234,54 +1267,6 @@ function InvoiceModal({ facturaId, onClose }) {
   );
 }
 
-function SuministrosView({ comunidadFilter, onSelect }) {
-  const [search, setSearch] = React.useState("");
-  const list = React.useMemo(() => {
-    let l = window.SUMINISTROS.map(s => ({ ...s, comunidad: window.getComunidad(s.comunidadId) }));
-    if (comunidadFilter !== "all") l = l.filter(s => s.comunidadId === comunidadFilter);
-    if (search) {
-      const q = search.toLowerCase();
-      l = l.filter(s => (s.alias||"").toLowerCase().includes(q) || (s.cups||"").toLowerCase().includes(q) || (s.comunidad?.nombre||"").toLowerCase().includes(q));
-    }
-    return l;
-  }, [comunidadFilter, search]);
-
-  return (
-    <div className="ads-page">
-      <PageHeader eyebrow="Cartera" title="Suministros" description="Listado completo de puntos de suministro (CUPS)"/>
-      <div className="ads-toolbar">
-        <div style={{ position: "relative", flex: 1, maxWidth: 360 }}>
-          <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)" }}><Icon.search/></span>
-          <input className="ads-input" placeholder="Buscar CUPS, alias o comunidad…" value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 38 }}/>
-        </div>
-      </div>
-      <div className="ads-supply-grid">
-        {list.map(s => {
-          const ct = window.getContratoBySuministro(s.id);
-          return (
-            <button key={s.id} className="ads-supply-card" onClick={() => ct && onSelect(ct.id)}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 11, color: "var(--ink-3)", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 4 }}>{s.comunidad?.nombre || "—"}</div>
-                  <div style={{ fontSize: 15, fontWeight: 500, color: "var(--ink-1)" }}>{s.alias}</div>
-                </div>
-                <StatusBadge estado={s.estado}/>
-              </div>
-              <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--ink-3)", marginTop: 10 }}>{s.cups}</div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
-                <div><div style={{ fontSize: 11, color: "var(--ink-3)" }}>Tarifa</div><div style={{ fontSize: 13, fontWeight: 500, marginTop: 2 }}>{s.tarifa}</div></div>
-                <div><div style={{ fontSize: 11, color: "var(--ink-3)" }}>Potencia</div><div style={{ fontSize: 13, fontWeight: 500, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>{window.formatNum(s.potencia, 2)} kW</div></div>
-                <div style={{ textAlign: "right" }}><div style={{ fontSize: 11, color: "var(--ink-3)" }}>Coste 12m</div><div style={{ fontSize: 13, fontWeight: 500, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>{window.formatEUR(s.costeAnual)}</div></div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-      {list.length === 0 && <Empty description="Sin suministros que coincidan"/>}
-    </div>
-  );
-}
-
 function NotificacionesView() {
   const [filter, setFilter] = React.useState("todas");
   const list = window.NOTIFICACIONES.filter(n => filter === "todas" || (filter === "noleidas" && !n.leida));
@@ -1392,7 +1377,6 @@ function App() {
         {view === "contratos"          && <ContratosView comunidadFilter={comunidadFilter} onSelect={handleSelectContrato}/>}
         {view === "contrato-detalle"   && <ContratoDetalle contratoId={contratoSel} onBack={() => setView("contratos")} onOpenInvoice={(id) => setFacturaSel(id)}/>}
         {view === "facturas"           && <FacturasView comunidadFilter={comunidadFilter} onOpenInvoice={(id) => setFacturaSel(id)}/>}
-        {view === "suministros"        && <SuministrosView comunidadFilter={comunidadFilter} onSelect={handleSelectContrato}/>}
         {view === "notificaciones"     && <NotificacionesView/>}
         {view === "perfil"             && <PerfilView/>}
       </main>
