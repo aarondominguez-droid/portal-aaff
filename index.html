@@ -369,7 +369,18 @@ function buildNotificaciones({ FACTURAS, CONTRATOS, COMUNIDADES, aaffKey }) {
   return out;
 }
 
+function markAllNotifsRead() {
+  const aaffKey = getAaffKey();
+  const set = loadReadIds(aaffKey);
+  for (const n of (window.NOTIFICACIONES || [])) {
+    set.add(n.id);
+    n.leida = true;
+  }
+  saveReadIds(aaffKey, set);
+}
+
 window.markNotifRead = markNotifRead;
+window.markAllNotifsRead = markAllNotifsRead;
 
 async function bootstrapData() {
   const aaffKey = getAaffKey();
@@ -1554,19 +1565,39 @@ function InvoiceModal({ facturaId, onClose }) {
 
 function NotificacionesView() {
   const [filter, setFilter] = React.useState("todas");
+  const [tipoFilter, setTipoFilter] = React.useState("todos");
   const [, force] = React.useState(0);
   const handleClick = (n) => {
     if (n.leida) return;
     window.markNotifRead(n.id);
     force(x => x + 1);
   };
-  const list = window.NOTIFICACIONES.filter(n => filter === "todas" || (filter === "noleidas" && !n.leida));
+  const tiposDisponibles = [...new Set(window.NOTIFICACIONES.map(n => n.tipo))];
+  const TIPO_LABELS = { factura: "Facturas", contrato: "Contratos", alerta: "Alertas", vencimiento: "Vencimientos" };
+  const list = window.NOTIFICACIONES.filter(n => {
+    if (filter === "noleidas" && n.leida) return false;
+    if (tipoFilter !== "todos" && n.tipo !== tipoFilter) return false;
+    return true;
+  });
   return (
     <div className="ads-page">
       <PageHeader eyebrow="Avisos" title="Notificaciones" description="Centro de avisos del portal"/>
-      <div className="ads-segmented" style={{ alignSelf: "flex-start" }}>
-        <button className={filter === "todas" ? "active" : ""} onClick={() => setFilter("todas")}>Todas ({window.NOTIFICACIONES.length})</button>
-        <button className={filter === "noleidas" ? "active" : ""} onClick={() => setFilter("noleidas")}>No leídas ({window.NOTIFICACIONES.filter(n=>!n.leida).length})</button>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          <div className="ads-segmented">
+            <button className={filter === "todas" ? "active" : ""} onClick={() => setFilter("todas")}>Todas ({window.NOTIFICACIONES.length})</button>
+            <button className={filter === "noleidas" ? "active" : ""} onClick={() => setFilter("noleidas")}>No leídas ({window.NOTIFICACIONES.filter(n=>!n.leida).length})</button>
+          </div>
+          <select className="ads-select" value={tipoFilter} onChange={e => setTipoFilter(e.target.value)}>
+            <option value="todos">Todos los tipos</option>
+            {tiposDisponibles.map(t => <option key={t} value={t}>{TIPO_LABELS[t] || t}</option>)}
+          </select>
+        </div>
+        {window.NOTIFICACIONES.some(n => !n.leida) && (
+          <button className="ads-link" onClick={() => { window.markAllNotifsRead(); force(x => x + 1); }}>
+            Marcar todas como leídas
+          </button>
+        )}
       </div>
       <Card padding={0}>
         {list.length === 0 ? (
