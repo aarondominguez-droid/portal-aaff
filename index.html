@@ -392,12 +392,13 @@ async function bootstrapData() {
   }
   const headers = { "X-AAFF-Key": aaffKey };
 
-  // 3 llamadas en paralelo
-  const [me, contratosRes, facturasRes] = await Promise.all([
-    apiGet("/api/me", headers),
-    apiGet("/api/contratos", headers),
-    apiGet("/api/facturas?limit=500", headers),
-  ]);
+  // Lanzamos las 3 llamadas en paralelo, pero solo bloqueamos en me + contratos.
+  // /api/facturas se resuelve en background; cuando llega, re-render vía evento.
+  const mePromise        = apiGet("/api/me", headers);
+  const contratosPromise = apiGet("/api/contratos", headers);
+  const facturasPromise  = apiGet("/api/facturas?limit=500", headers);
+
+  const [me, contratosRes] = await Promise.all([mePromise, contratosPromise]);
 
   // Branding del AAFF (champagne es la paleta default; otras se aplican via data-primary)
   const colorPrim = me.branding && me.branding.color_primario;
@@ -405,8 +406,6 @@ async function bootstrapData() {
     document.body.setAttribute("data-primary", colorPrim);
   }
 
-  // ADMIN — info de cabecera. Como no tenemos un usuario humano (la auth la hace Odoo),
-  // mostramos la info del AAFF/canal en el avatar.
   const ADMIN = {
     nombre: me.admin.nombre || me.branding.nombre || "AAFF",
     email: me.admin.email || "",
@@ -416,71 +415,95 @@ async function bootstrapData() {
     telefono: "",
   };
 
-    const rawFacturas = facturasRes.FACTURAS || [];
-
-  // Derivamos costeAnual de cada suministro a partir de las facturas del último año.
   const today = new Date();
-  const oneYearAgo = new Date(today.getFullYear()-1, today.getMonth(), today.getDate());
-  const costePerSuministro = {};
-  rawFacturas.forEach(f => {
-    if (!f.fechaEmision) return;
-    const d = new Date(f.fechaEmision);
-    if (isNaN(d) || d < oneYearAgo) return;
-    costePerSuministro[f.suministroId] = (costePerSuministro[f.suministroId] || 0) + (Number(f.importe)||0);
-  });
 
   const SUMINISTROS = (contratosRes.SUMINISTROS || []).map(s => ({
     ...s,
-    costeAnual: +(costePerSuministro[s.id] || 0).toFixed(2),
+    costeAnual: 0, // se rellena al llegar las facturas
   }));
-
-  // Comunidades: añadimos vecinos:0 (no expuesto por Nemon, oculto en UI cuando vale 0).
   const COMUNIDADES = (contratosRes.COMUNIDADES || []).map(c => ({ ...c, vecinos: 0 }));
-
-  // Enriquecemos las facturas con comunidadId/comunidadNombre/alias resolviendo
-  // por suministroId contra los datos ya cargados desde /api/contratos.
-  // Esto evita una segunda llamada a Nemon en el flujo de facturas.
-  const suministroById = Object.fromEntries(SUMINISTROS.map(s => [s.id, s]));
-  const comunidadById  = Object.fromEntries(COMUNIDADES.map(c => [c.id, c]));
-  const FACTURAS = rawFacturas.map(f => {
-    const s = suministroById[f.suministroId];
-    const comunidadId = f.comunidadId || s?.comunidadId || '';
-    const c = comunidadById[comunidadId];
-    return {
-      ...f,
-      comunidadId,
-      comunidadNombre: f.comunidadNombre || c?.nombre || '',
-      alias: f.alias || s?.alias || '',
-      cups: f.cups || s?.cups || '',
-    };
-  });
-
-  // Contratos: añadimos placeholders de precios (Nemon no los expone aquí; pendiente).
   const CONTRATOS = (contratosRes.CONTRATOS || []).map(c => ({
     ...c,
     precioEnergia: { p1: null, p2: null, p3: null },
     precioPotencia: null,
   }));
-
   const TARIFAS = [...new Set(SUMINISTROS.map(s=>s.tarifa).filter(Boolean))].sort();
-  const NOTIFICACIONES = buildNotificaciones({ FACTURAS, CONTRATOS, COMUNIDADES, aaffKey });
 
   Object.assign(window, {
-    ADMIN, COMUNIDADES, SUMINISTROS, CONTRATOS, FACTURAS, NOTIFICACIONES, TARIFAS,
+    ADMIN, COMUNIDADES, SUMINISTROS, CONTRATOS,
+    FACTURAS: [],          // placeholder hasta fase 2
+    NOTIFICACIONES: [],    // se construyen tras facturas
+    FACTURAS_LOADING: true,
+    FACTURAS_ERROR: null,
+    TARIFAS,
     BRANDING: me.branding,
     MESES, MESES_LARGOS,
     getComunidad, getSuministro, getSuministrosByComunidad, getFacturasBySuministro, getContratoBySuministro,
     formatEUR, formatKWh, formatNum, formatFecha,
     CURRENT_YEAR: today.getFullYear(),
     PREVIOUS_YEAR: today.getFullYear()-1,
-    CURRENT_MONTH: today.getMonth(), // 0-11
+    CURRENT_MONTH: today.getMonth(),
   });
+
+  // Fase 2: facturas en background. Cuando llegan, recalculamos costeAnual,
+  // notificaciones y disparamos un evento para que React re-renderice.
+  facturasPromise
+    .then(facturasRes => {
+      const rawFacturas = facturasRes.FACTURAS || [];
+
+      const oneYearAgo = new Date(today.getFullYear()-1, today.getMonth(), today.getDate());
+      const costePerSuministro = {};
+      rawFacturas.forEach(f => {
+        if (!f.fechaEmision) return;
+        const d = new Date(f.fechaEmision);
+        if (isNaN(d) || d < oneYearAgo) return;
+        costePerSuministro[f.suministroId] = (costePerSuministro[f.suministroId] || 0) + (Number(f.importe)||0);
+      });
+
+      const suministroById = Object.fromEntries(window.SUMINISTROS.map(s => [s.id, s]));
+      const comunidadById  = Object.fromEntries(window.COMUNIDADES.map(c => [c.id, c]));
+
+      window.SUMINISTROS = window.SUMINISTROS.map(s => ({
+        ...s,
+        costeAnual: +(costePerSuministro[s.id] || 0).toFixed(2),
+      }));
+
+      window.FACTURAS = rawFacturas.map(f => {
+        const s = suministroById[f.suministroId];
+        const comunidadId = f.comunidadId || s?.comunidadId || '';
+        const c = comunidadById[comunidadId];
+        return {
+          ...f,
+          comunidadId,
+          comunidadNombre: f.comunidadNombre || c?.nombre || '',
+          alias: f.alias || s?.alias || '',
+          cups: f.cups || s?.cups || '',
+        };
+      });
+
+      window.NOTIFICACIONES = buildNotificaciones({
+        FACTURAS: window.FACTURAS, CONTRATOS: window.CONTRATOS, COMUNIDADES: window.COMUNIDADES, aaffKey,
+      });
+      window.FACTURAS_LOADING = false;
+    })
+    .catch(err => {
+      console.error("Error cargando facturas:", err);
+      window.FACTURAS_LOADING = false;
+      window.FACTURAS_ERROR = err.message || "Error al cargar facturas";
+    })
+    .finally(() => {
+      window.dispatchEvent(new CustomEvent("facturas-ready"));
+    });
 }
 
 // Descarga del PDF: abre en una nueva pestaña con la cabecera de auth.
-async function downloadInvoicePdf(filename) {
+// Acepta opcionalmente un billNumber: si va, el backend filtra getBills por
+// ese número en vez de traerse 1000 facturas para validar pertenencia.
+async function downloadInvoicePdf(filename, billNumber) {
   const aaffKey = getAaffKey();
-  const url = `${API_BASE}/api/factura/pdf?filename=${encodeURIComponent(filename)}`;
+  const qs = new URLSearchParams({ filename });
+  if (billNumber) qs.set("bill_number", billNumber);
+  const url = `${API_BASE}/api/factura/pdf?${qs.toString()}`;
   const r = await fetch(url, { headers: { "X-AAFF-Key": aaffKey } });
   if (!r.ok) {
     let msg = `HTTP ${r.status}`;
@@ -1472,7 +1495,7 @@ function InvoiceModal({ facturaId, onClose }) {
     setDownloading(true);
     setDownloadError(null);
     try {
-      await window.downloadInvoicePdf(filename);
+      await window.downloadInvoicePdf(filename, f.numero);
       setDownloaded(true);
       setTimeout(() => setDownloaded(false), 2200);
     } catch (err) {
@@ -1710,6 +1733,7 @@ function App() {
 function AppRoot() {
   const [state, setState] = React.useState("loading");
   const [error, setError] = React.useState(null);
+  const [, forceTick] = React.useReducer(x => x + 1, 0);
 
   const load = React.useCallback(() => {
     setState("loading");
@@ -1720,6 +1744,13 @@ function AppRoot() {
   }, []);
 
   React.useEffect(() => { load(); }, [load]);
+
+  // Re-render del árbol entero cuando lleguen las facturas (fase 2 del bootstrap).
+  React.useEffect(() => {
+    const onReady = () => forceTick();
+    window.addEventListener("facturas-ready", onReady);
+    return () => window.removeEventListener("facturas-ready", onReady);
+  }, []);
 
   if (state === "loading") return <LoadingScreen/>;
   if (state === "error")   return <ErrorScreen message={error} onRetry={load}/>;
