@@ -434,7 +434,7 @@ function shortenComunidad(nombre) {
 
 function comunidadParts(nombre) {
   const base = shortenComunidad(nombre);
-  const m = base.match(/^(.*?)\s+(\d[\d\s\-\/]*)$/);
+  const m = base.match(/^(.*?)\s+(\d+[A-Z]?(?:[\s\-\/][\dA-Z]+)*)$/i);
   if (m && m[1].trim()) return { groupKey: m[1].trim().toUpperCase(), groupLabel: m[1].trim(), suffix: m[2].trim() };
   return { groupKey: base.toUpperCase(), groupLabel: base, suffix: "" };
 }
@@ -891,7 +891,7 @@ function Dashboard({ comunidadFilter, onNav, onOpenInvoice }) {
 
   const topSuministros = [...suministrosFiltrados]
     .sort((a, b) => (b.consumoAnual || 0) - (a.consumoAnual || 0))
-    .slice(0, 6)
+    .slice(0, 10)
     .map(s => ({
       label: s.cups || s.alias,
       sublabel: `${window.getComunidad(s.comunidadId)?.nombre || ""} · ${s.alias || "—"} · ${s.tarifa}`,
@@ -945,7 +945,7 @@ function Dashboard({ comunidadFilter, onNav, onOpenInvoice }) {
         </Card>
         <Card>
           <CardHeader title="Top suministros" subtitle="Mayor consumo anual"/>
-          <div style={{ paddingTop: 6 }}>{topSuministros.length ? <HBarChart data={topSuministros}/> : <Empty title="Sin datos" description="Aún no hay consumo anual registrado"/>}</div>
+          <div style={{ paddingTop: 6, flex: 1, overflowY: "auto", minHeight: 0 }}>{topSuministros.length ? <HBarChart data={topSuministros}/> : <Empty title="Sin datos" description="Aún no hay consumo anual registrado"/>}</div>
         </Card>
       </div>
 
