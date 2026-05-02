@@ -571,7 +571,7 @@ function Empty({ title = "Sin resultados", description }) {
 /* ═══════════════════════════════════════════════════════════════════
    5. CHARTS (SVG nativos, sin libs)
    ═══════════════════════════════════════════════════════════════════ */
-function LineAreaChart({ data, dataPrev, height = 280, color = "var(--gold)", colorPrev = "var(--gold-soft)", yLabel = "kWh", showLegend = true, currentYear, prevYear }) {
+function LineAreaChart({ data, dataPrev, labels, height = 280, color = "var(--gold)", colorPrev = "var(--gold-soft)", yLabel = "kWh", showLegend = true, currentYear, prevYear }) {
   const ref = React.useRef(null);
   const [w, setW] = React.useState(720);
   const [hover, setHover] = React.useState(null);
@@ -590,8 +590,21 @@ function LineAreaChart({ data, dataPrev, height = 280, color = "var(--gold)", co
   const xStep = chartW / Math.max(1, data.length - 1);
   const xAt = i => padL + i * xStep;
   const yAt = v => padT + chartH - (v / maxV) * chartH;
-  const linePath = (arr) => arr.map((v, i) => `${i === 0 ? "M" : "L"} ${xAt(i)} ${yAt(v ?? 0)}`).join(" ");
-  const areaPath = (arr) => `${linePath(arr)} L ${xAt(arr.length - 1)} ${padT + chartH} L ${xAt(0)} ${padT + chartH} Z`;
+  const linePath = (arr) => {
+    let d = "", started = false;
+    arr.forEach((v, i) => {
+      if (v == null) { started = false; return; }
+      d += `${started ? "L" : "M"} ${xAt(i)} ${yAt(v)} `;
+      started = true;
+    });
+    return d.trim();
+  };
+  const areaPath = (arr) => {
+    const lastIdx = arr.reduce((acc, v, i) => v != null ? i : acc, -1);
+    const firstIdx = arr.findIndex(v => v != null);
+    if (lastIdx < 0) return "";
+    return `${linePath(arr)} L ${xAt(lastIdx)} ${padT + chartH} L ${xAt(firstIdx)} ${padT + chartH} Z`;
+  };
   return (
     <div ref={ref} style={{ width: "100%", position: "relative" }}>
       <svg width={w} height={height} style={{ display: "block", overflow: "visible" }}>
@@ -608,16 +621,16 @@ function LineAreaChart({ data, dataPrev, height = 280, color = "var(--gold)", co
             </g>
           );
         })}
-        {data.map((_, i) => (<text key={i} x={xAt(i)} y={height - 14} textAnchor="middle" fontSize="11" fill="var(--ink-3)">{window.MESES[i % 12]}</text>))}
+        {data.map((_, i) => (<text key={i} x={xAt(i)} y={height - 14} textAnchor="middle" fontSize="11" fill="var(--ink-3)">{(labels || window.MESES)[i % 12]}</text>))}
         {dataPrev && (<path d={linePath(dataPrev)} fill="none" stroke={colorPrev} strokeWidth="1.5" strokeDasharray="4 4"/>)}
         <path d={areaPath(data)} fill="url(#lineGrad)"/>
         <path d={linePath(data)} fill="none" stroke={color} strokeWidth="2"/>
-        {data.map((v, i) => (<circle key={i} cx={xAt(i)} cy={yAt(v ?? 0)} r={hover === i ? 5 : 3.2} fill="white" stroke={color} strokeWidth="2"/>))}
-        {data.map((v, i) => (<rect key={`h${i}`} x={xAt(i) - xStep / 2} y={padT} width={xStep} height={chartH} fill="transparent" onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}/>))}
+        {data.map((v, i) => v == null ? null : (<circle key={i} cx={xAt(i)} cy={yAt(v)} r={hover === i ? 5 : 3.2} fill="white" stroke={color} strokeWidth="2"/>))}
+        {data.map((v, i) => v == null ? null : (<rect key={`h${i}`} x={xAt(i) - xStep / 2} y={padT} width={xStep} height={chartH} fill="transparent" onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}/>))}
       </svg>
       {hover !== null && (
         <div style={{ position: "absolute", left: xAt(hover) + 8, top: yAt(data[hover] ?? 0) - 8, background: "var(--ink-1)", color: "white", padding: "10px 12px", borderRadius: 8, fontSize: 12, pointerEvents: "none", whiteSpace: "nowrap", boxShadow: "0 12px 32px rgba(0,0,0,0.18)", zIndex: 5 }}>
-          <div style={{ opacity: 0.7, fontSize: 10, marginBottom: 4, letterSpacing: 0.4 }}>{window.MESES_LARGOS[hover % 12].toUpperCase()}</div>
+          <div style={{ opacity: 0.7, fontSize: 10, marginBottom: 4, letterSpacing: 0.4 }}>{(labels ? labels[hover] : window.MESES_LARGOS[hover % 12]).toUpperCase()}</div>
           <div><b>{currentYear}:</b> {yLabel === "€" ? window.formatEUR(data[hover] ?? 0) : window.formatKWh(data[hover] ?? 0)}</div>
           {dataPrev && dataPrev[hover] != null && (<div style={{ opacity: 0.75 }}><b>{prevYear}:</b> {yLabel === "€" ? window.formatEUR(dataPrev[hover]) : window.formatKWh(dataPrev[hover])}</div>)}
         </div>
@@ -775,24 +788,28 @@ function Dashboard({ comunidadFilter, onNav, onOpenInvoice }) {
   const monthsCY = window.CURRENT_MONTH + 1;
 
   const consumoMensualCY = Array.from({ length: 12 }, (_, m) => {
+    if (m > window.CURRENT_MONTH) return null;
     return window.FACTURAS.filter(f => f.year === CY && f.mesIdx === m && suministrosIds.includes(f.suministroId)).reduce((s, f) => s + (f.consumoKwh || 0), 0);
   });
   const consumoMensualPY = Array.from({ length: 12 }, (_, m) => {
     return window.FACTURAS.filter(f => f.year === PY && f.mesIdx === m && suministrosIds.includes(f.suministroId)).reduce((s, f) => s + (f.consumoKwh || 0), 0);
   });
   const costeMensualCY = Array.from({ length: 12 }, (_, m) => {
+    if (m > window.CURRENT_MONTH) return null;
     return +window.FACTURAS.filter(f => f.year === CY && f.mesIdx === m && suministrosIds.includes(f.suministroId)).reduce((s, f) => s + (f.importe || 0), 0).toFixed(2);
   });
   const costeMensualPY = Array.from({ length: 12 }, (_, m) => {
     return +window.FACTURAS.filter(f => f.year === PY && f.mesIdx === m && suministrosIds.includes(f.suministroId)).reduce((s, f) => s + (f.importe || 0), 0).toFixed(2);
   });
+  const hayDatosPrevConsumo = consumoMensualPY.some(v => v > 0);
+  const hayDatosPrevCoste = costeMensualPY.some(v => v > 0);
 
   const totalSuministros = suministrosFiltrados.length;
-  const consumoYtd = consumoMensualCY.slice(0, monthsCY).reduce((a, b) => a + b, 0);
+  const consumoYtd = consumoMensualCY.slice(0, monthsCY).reduce((a, b) => a + (b || 0), 0);
   const consumoYtdPrev = consumoMensualPY.slice(0, monthsCY).reduce((a, b) => a + b, 0);
   const consumoDelta = consumoYtdPrev > 0 ? ((consumoYtd - consumoYtdPrev) / consumoYtdPrev) * 100 : null;
 
-  const costeYtd = costeMensualCY.slice(0, monthsCY).reduce((a, b) => a + b, 0);
+  const costeYtd = costeMensualCY.slice(0, monthsCY).reduce((a, b) => a + (b || 0), 0);
   const costeYtdPrev = costeMensualPY.slice(0, monthsCY).reduce((a, b) => a + b, 0);
   const costeDelta = costeYtdPrev > 0 ? ((costeYtd - costeYtdPrev) / costeYtdPrev) * 100 : null;
 
@@ -811,8 +828,8 @@ function Dashboard({ comunidadFilter, onNav, onOpenInvoice }) {
     .sort((a, b) => (b.consumoAnual || 0) - (a.consumoAnual || 0))
     .slice(0, 6)
     .map(s => ({
-      label: s.alias || s.cups,
-      sublabel: `${window.getComunidad(s.comunidadId)?.nombre || ""} · ${s.tarifa}`,
+      label: s.cups || s.alias,
+      sublabel: `${window.getComunidad(s.comunidadId)?.nombre || ""} · ${s.alias || "—"} · ${s.tarifa}`,
       value: s.consumoAnual || 0,
     }));
 
@@ -846,7 +863,7 @@ function Dashboard({ comunidadFilter, onNav, onOpenInvoice }) {
       <div className="ads-grid-2-1">
         <Card>
           <CardHeader title="Consumo eléctrico" subtitle="Comparativa mensual con año anterior" right={<div style={{ display: "flex", gap: 6, alignItems: "center", color: "var(--ink-3)", fontSize: 12 }}><Icon.zap style={{ color: "var(--gold)" }}/> kWh</div>}/>
-          <LineAreaChart data={consumoMensualCY} dataPrev={consumoMensualPY} height={300} yLabel="kWh" currentYear={CY} prevYear={PY}/>
+          <LineAreaChart data={consumoMensualCY} dataPrev={hayDatosPrevConsumo ? consumoMensualPY : null} height={300} yLabel="kWh" currentYear={CY} prevYear={PY}/>
         </Card>
         <Card>
           <CardHeader title="Distribución por tarifa" subtitle="Acceso a redes"/>
@@ -857,7 +874,7 @@ function Dashboard({ comunidadFilter, onNav, onOpenInvoice }) {
       <div className="ads-grid-2-1">
         <Card>
           <CardHeader title="Coste mensual" subtitle="Importe facturado por periodo"/>
-          <BarChart data={costeMensualCY} height={260} valueLabel="€"/>
+          <BarChart data={costeMensualCY.map(v => v ?? 0)} height={260} valueLabel="€"/>
         </Card>
         <Card>
           <CardHeader title="Top suministros" subtitle="Mayor consumo anual"/>
@@ -999,7 +1016,7 @@ function ContratoDetalle({ contratoId, onBack, onOpenInvoice }) {
     const d = new Date(today.getFullYear(), today.getMonth() - 11 + m, 1);
     const y = d.getFullYear(), mi = d.getMonth();
     const f = window.FACTURAS.find(f => f.suministroId === s?.id && f.year === y && f.mesIdx === mi);
-    return f ? f.consumoKwh : 0;
+    return f ? f.consumoKwh : null;
   });
   const labels12m = Array.from({ length: 12 }, (_, m) => {
     const d = new Date(today.getFullYear(), today.getMonth() - 11 + m, 1);
@@ -1007,6 +1024,12 @@ function ContratoDetalle({ contratoId, onBack, onOpenInvoice }) {
   });
 
   const tienePrecios = c.precioEnergia && c.precioEnergia.p1 != null;
+  const consumoFacturadoYTD = window.FACTURAS
+    .filter(f => f.suministroId === s?.id && f.year === today.getFullYear())
+    .reduce((acc, f) => acc + (f.consumoKwh || 0), 0);
+  const diasVencimiento = c.fechaFin
+    ? Math.ceil((new Date(c.fechaFin) - today) / 86400000)
+    : null;
 
   return (
     <div className="ads-page">
@@ -1026,11 +1049,10 @@ function ContratoDetalle({ contratoId, onBack, onOpenInvoice }) {
             <div><dt>Energía</dt><dd>{c.energia || "—"}</dd></div>
             <div><dt>Inicio</dt><dd>{window.formatFecha(c.fechaInicio)}</dd></div>
             <div><dt>Fin de vigencia</dt><dd>{window.formatFecha(c.fechaFin)}</dd></div>
-            <div><dt>Auto-renovación</dt><dd>{c.autoRenovacion ? "Sí" : "No"}</dd></div>
           </dl>
         </Card>
         <Card>
-          <CardHeader title="Precios contratados" subtitle={tienePrecios ? "€ sin impuestos" : "Información no disponible vía API"}/>
+          <CardHeader title="Producto y condiciones" subtitle="Información del contrato vigente"/>
           {tienePrecios ? (
             <div className="ads-price-grid">
               <div><div className="ads-price-label">Energía P1</div><div className="ads-price-val">{window.formatNum(c.precioEnergia.p1, 4)}<span>€/kWh</span></div></div>
@@ -1039,15 +1061,24 @@ function ContratoDetalle({ contratoId, onBack, onOpenInvoice }) {
               <div><div className="ads-price-label">Potencia</div><div className="ads-price-val">{window.formatNum(c.precioPotencia, 2)}<span>€/kW·año</span></div></div>
             </div>
           ) : (
-            <div style={{ padding: 14, background: "var(--bg-soft)", borderRadius: 8, fontSize: 13, color: "var(--ink-2)", lineHeight: 1.6 }}>
-              Los precios contratados de cada periodo no se exponen en el listado de contratos de Nemon. Puedes consultarlos en cada factura individual del histórico.
-            </div>
+            <>
+              <dl className="ads-dl">
+                <div><dt>Producto</dt><dd>{c.modalidad || "—"}</dd></div>
+                <div><dt>Tipo de energía</dt><dd>{c.energia || "—"}</dd></div>
+                <div><dt>Consumo anual estimado</dt><dd>{s?.consumoAnual ? window.formatKWh(s.consumoAnual) : "—"}</dd></div>
+                <div><dt>Consumo facturado YTD</dt><dd>{consumoFacturadoYTD ? window.formatKWh(consumoFacturadoYTD) : "—"}</dd></div>
+                <div><dt>Días hasta vencimiento</dt><dd>{diasVencimiento == null ? "—" : (diasVencimiento < 0 ? "Vencido" : `${diasVencimiento} días`)}</dd></div>
+              </dl>
+              <div style={{ marginTop: 16, padding: 14, background: "var(--bg-soft)", borderRadius: 8, fontSize: 12, color: "var(--ink-2)", lineHeight: 1.55 }}>
+                Los precios contratados de cada periodo no se exponen en el listado de contratos de Nemon. Puedes consultarlos en cada factura individual del histórico.
+              </div>
+            </>
           )}
         </Card>
       </div>
       <Card>
         <CardHeader title="Consumo últimos 12 meses" subtitle="kWh por periodo de facturación"/>
-        <LineAreaChart data={consumo12m} height={240} yLabel="kWh" showLegend={false} currentYear={today.getFullYear()}/>
+        <LineAreaChart data={consumo12m} labels={labels12m} height={240} yLabel="kWh" showLegend={false} currentYear={today.getFullYear()}/>
       </Card>
       <Card>
         <CardHeader title="Facturas asociadas"/>
