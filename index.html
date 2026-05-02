@@ -841,6 +841,10 @@ function KPICard({ label, value, sub, delta, deltaLabel, deltaInverted, accent =
 
 function Dashboard({ comunidadFilter, onNav, onOpenInvoice }) {
   const [period, setPeriod] = React.useState("12m");
+  const todayYM = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; })();
+  const defaultFromYM = (() => { const d = new Date(); d.setMonth(d.getMonth() - 11); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; })();
+  const [customFrom, setCustomFrom] = React.useState(defaultFromYM);
+  const [customTo, setCustomTo] = React.useState(todayYM);
 
   const suministrosFiltrados = React.useMemo(() => {
     if (comunidadFilter === "all") return window.SUMINISTROS;
@@ -868,6 +872,44 @@ function Dashboard({ comunidadFilter, onNav, onOpenInvoice }) {
   });
   const hayDatosPrevConsumo = consumoMensualPY.some(v => v > 0);
   const hayDatosPrevCoste = costeMensualPY.some(v => v > 0);
+
+  // Serie según periodo seleccionado: 6m/12m rolling o YTD del año actual
+  const periodMonths = React.useMemo(() => {
+    if (period === "ytd") {
+      return Array.from({ length: window.CURRENT_MONTH + 1 }, (_, m) => ({ year: CY, mesIdx: m }));
+    }
+    if (period === "custom") {
+      const [fy, fm] = customFrom.split("-").map(Number);
+      const [ty, tm] = customTo.split("-").map(Number);
+      let y = fy, m = fm - 1;
+      const list = [];
+      const guard = 600;
+      let i = 0;
+      while ((y < ty || (y === ty && m <= tm - 1)) && i < guard) {
+        list.push({ year: y, mesIdx: m });
+        m += 1; if (m > 11) { m = 0; y += 1; }
+        i += 1;
+      }
+      return list;
+    }
+    const len = period === "6m" ? 6 : 12;
+    const list = [];
+    for (let i = len - 1; i >= 0; i--) {
+      let m = window.CURRENT_MONTH - i, y = CY;
+      while (m < 0) { m += 12; y -= 1; }
+      list.push({ year: y, mesIdx: m });
+    }
+    return list;
+  }, [period, CY, customFrom, customTo]);
+  const sumFor = (year, mesIdx, key) =>
+    window.FACTURAS.filter(f => f.year === year && f.mesIdx === mesIdx && suministrosIds.includes(f.suministroId))
+                   .reduce((s, f) => s + (f[key] || 0), 0);
+  const consumoSerie     = periodMonths.map(({year, mesIdx}) => sumFor(year, mesIdx, "consumoKwh"));
+  const consumoSeriePrev = periodMonths.map(({year, mesIdx}) => sumFor(year - 1, mesIdx, "consumoKwh"));
+  const costeSerie       = periodMonths.map(({year, mesIdx}) => +sumFor(year, mesIdx, "importe").toFixed(2));
+  const periodHasMultipleYears = new Set(periodMonths.map(p => p.year)).size > 1;
+  const periodLabels     = periodMonths.map(({year, mesIdx}) => period === "ytd" ? window.MESES[mesIdx] : (periodHasMultipleYears || year !== CY ? `${window.MESES[mesIdx]} '${String(year).slice(-2)}` : window.MESES[mesIdx]));
+  const hayDatosPrevSerie = consumoSeriePrev.some(v => v > 0);
 
   const totalSuministros = suministrosFiltrados.length;
   const consumoYtd = consumoMensualCY.slice(0, monthsCY).reduce((a, b) => a + (b || 0), 0);
@@ -913,8 +955,18 @@ function Dashboard({ comunidadFilter, onNav, onOpenInvoice }) {
   return (
     <div className="ads-page">
       <PageHeader eyebrow={headerEyebrow} title={headerTitle} description={headerDesc}>
-        <div className="ads-segmented">
-          {["6m", "12m", "ytd"].map(p => (<button key={p} className={period === p ? "active" : ""} onClick={() => setPeriod(p)}>{p === "6m" ? "Últimos 6 meses" : p === "12m" ? "Últimos 12 meses" : "Año actual"}</button>))}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
+          <div className="ads-segmented">
+            {["6m", "12m", "ytd", "custom"].map(p => (<button key={p} className={period === p ? "active" : ""} onClick={() => setPeriod(p)}>{p === "6m" ? "Últimos 6 meses" : p === "12m" ? "Últimos 12 meses" : p === "ytd" ? "Año actual" : "Personalizado"}</button>))}
+          </div>
+          {period === "custom" && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12, color: "var(--ink-3)" }}>
+              <span>Desde</span>
+              <input type="month" className="ads-input" value={customFrom} max={customTo} onChange={e => setCustomFrom(e.target.value)} style={{ height: 32, fontSize: 12, padding: "4px 8px" }}/>
+              <span>Hasta</span>
+              <input type="month" className="ads-input" value={customTo} min={customFrom} max={todayYM} onChange={e => setCustomTo(e.target.value)} style={{ height: 32, fontSize: 12, padding: "4px 8px" }}/>
+            </div>
+          )}
         </div>
       </PageHeader>
 
@@ -928,7 +980,7 @@ function Dashboard({ comunidadFilter, onNav, onOpenInvoice }) {
       <div className="ads-grid-2-1">
         <Card>
           <CardHeader title="Consumo eléctrico" subtitle="Comparativa mensual con año anterior" right={<div style={{ display: "flex", gap: 6, alignItems: "center", color: "var(--ink-3)", fontSize: 12 }}><Icon.zap style={{ color: "var(--gold)" }}/> kWh</div>}/>
-          <LineAreaChart data={consumoMensualCY} dataPrev={hayDatosPrevConsumo ? consumoMensualPY : null} height={300} yLabel="kWh" currentYear={CY} prevYear={PY}/>
+          <LineAreaChart data={consumoSerie} dataPrev={hayDatosPrevSerie ? consumoSeriePrev : null} labels={periodLabels} height={300} yLabel="kWh" currentYear={CY} prevYear={PY}/>
         </Card>
         <Card>
           <CardHeader title="Distribución por tarifa" subtitle="Acceso a redes"/>
@@ -936,14 +988,12 @@ function Dashboard({ comunidadFilter, onNav, onOpenInvoice }) {
         </Card>
       </div>
 
-      <div className="ads-grid-2-1">
+      <div className="ads-grid-2-1" style={{ alignItems: "start" }}>
         <Card>
           <CardHeader title="Coste mensual" subtitle="Importe facturado por periodo"/>
-          <div style={{ flex: 1, display: "flex", minHeight: 260 }}>
-            <BarChart data={costeMensualCY.map(v => v ?? 0)} height={260} valueLabel="€" fill/>
-          </div>
+          <BarChart data={costeSerie} labels={periodLabels} height={260} valueLabel="€"/>
         </Card>
-        <Card>
+        <Card style={{ maxHeight: 420 }}>
           <CardHeader title="Top suministros" subtitle="Mayor consumo anual"/>
           <div style={{ paddingTop: 6, flex: 1, overflowY: "auto", minHeight: 0 }}>{topSuministros.length ? <HBarChart data={topSuministros}/> : <Empty title="Sin datos" description="Aún no hay consumo anual registrado"/>}</div>
         </Card>
