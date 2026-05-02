@@ -68,7 +68,9 @@ body::before { content: ""; position: fixed; inset: 0; pointer-events: none; opa
 .ads-pagedesc { font-size: 14px; color: var(--ink-2); margin: 8px 0 0; max-width: 580px; }
 .ads-back { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; padding: 0; font-size: 13px; color: var(--ink-3); align-self: flex-start; }
 .ads-back:hover { color: var(--gold-deep); }
-.ads-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow-sm); }
+.ads-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
+.ads-nav-group { background: rgba(184, 148, 79, 0.06); border-left: 2px solid var(--gold); }
+.ads-nav-group:hover { background: rgba(184, 148, 79, 0.10); }
 .ads-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
 .ads-card-title { font-family: var(--serif); font-size: 20px; font-weight: 500; margin: 0; color: var(--ink-1); letter-spacing: -0.2px; }
 .ads-card-subtitle { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
@@ -448,7 +450,7 @@ function Sidebar({ current, onNav, comunidadFilter, setComunidadFilter }) {
   const items = [
     { id: "dashboard",      label: "Dashboard",      icon: Icon.dashboard },
     { id: "contratos",      label: "Contratos",      icon: Icon.contract, badge: window.CONTRATOS.filter(c=>c.estado!=="activo" && c.estado!=="aceptado").length || 0 },
-    { id: "facturas",       label: "Facturas",       icon: Icon.invoice,  badge: window.FACTURAS.filter(f=>f.estado==="vencida").length || 0 },
+    { id: "facturas",       label: "Facturas",       icon: Icon.invoice,  badge: window.FACTURAS.filter(f=>f.estado==="vencida"||f.estado==="pendiente").length || 0 },
     { id: "notificaciones", label: "Notificaciones", icon: Icon.bell,     badge: window.NOTIFICACIONES.filter(n=>!n.leida).length || 0 },
   ];
   const comunidadesFiltradas = React.useMemo(() => {
@@ -511,14 +513,14 @@ function Sidebar({ current, onNav, comunidadFilter, setComunidadFilter }) {
             return (
               <React.Fragment key={g.key}>
                 <button
-                  className="ads-nav-item ads-nav-sub"
+                  className="ads-nav-item ads-nav-sub ads-nav-group"
                   onClick={() => toggleGroup(g.key)}
                   title={g.label}
-                  style={{ fontWeight: 500 }}
+                  style={{ fontWeight: 600, color: "var(--ink-1)" }}
                 >
-                  <span style={{ display: "inline-block", width: 12, fontSize: 10, color: "var(--ink-3)", flexShrink: 0, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▸</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 14, height: 14, fontSize: 14, color: "var(--gold)", flexShrink: 0, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s", lineHeight: 1 }}>▸</span>
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.label}</span>
-                  <span className="ads-nav-count">{g.items.length}</span>
+                  <span className="ads-nav-count" style={{ background: "var(--gold)", color: "white", borderRadius: 10, padding: "1px 7px", fontSize: 11, fontWeight: 600 }}>{g.items.length}</span>
                 </button>
                 {isOpen && g.items.map(c => {
                   const tip = c.nombre + (c.direccion ? ` · ${c.direccion}` : "");
@@ -703,26 +705,31 @@ function LineAreaChart({ data, dataPrev, labels, height = 280, color = "var(--go
   );
 }
 
-function BarChart({ data, height = 240, color = "var(--gold)", labels = window.MESES, valueLabel = "€" }) {
+function BarChart({ data, height = 240, color = "var(--gold)", labels = window.MESES, valueLabel = "€", fill = false }) {
   const ref = React.useRef(null);
   const [w, setW] = React.useState(720);
+  const [h, setH] = React.useState(height);
   const [hover, setHover] = React.useState(null);
   React.useEffect(() => {
     if (!ref.current) return;
-    const ro = new ResizeObserver(([e]) => setW(e.contentRect.width));
+    const ro = new ResizeObserver(([e]) => {
+      setW(e.contentRect.width);
+      if (fill && e.contentRect.height > 0) setH(e.contentRect.height);
+    });
     ro.observe(ref.current);
     return () => ro.disconnect();
-  }, []);
+  }, [fill]);
   const padL = 56, padR = 12, padT = 14, padB = 32;
   const chartW = Math.max(0, w - padL - padR);
-  const chartH = height - padT - padB;
+  const effH = fill ? Math.max(h, height) : height;
+  const chartH = effH - padT - padB;
   const maxV = Math.max(...data, 1) * 1.15;
   const barW = (chartW / data.length) * 0.62;
   const step = chartW / data.length;
   const yAt = v => padT + chartH - (v / maxV) * chartH;
   return (
-    <div ref={ref} style={{ width: "100%", position: "relative" }}>
-      <svg width={w} height={height} style={{ display: "block" }}>
+    <div ref={ref} style={{ width: "100%", height: fill ? "100%" : "auto", minHeight: height, position: "relative" }}>
+      <svg width={w} height={effH} style={{ display: "block" }}>
         {Array.from({ length: 5 }, (_, i) => {
           const v = (maxV / 4) * i;
           const y = yAt(v);
@@ -735,12 +742,12 @@ function BarChart({ data, height = 240, color = "var(--gold)", labels = window.M
           return (<g key={i} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}><rect x={x} y={y} width={barW} height={h} fill={hover === i ? "var(--gold-deep)" : color} rx="2" style={{ transition: "fill 120ms" }}/><text x={x + barW / 2} y={height - 12} textAnchor="middle" fontSize="11" fill="var(--ink-3)">{labels[i]}</text></g>);
         })}
       </svg>
-      {hover !== null && (<div style={{ position: "absolute", left: padL + step * hover + step / 2, transform: "translateX(-50%)", top: yAt(data[hover]) - 44, background: "var(--ink-1)", color: "white", padding: "8px 10px", borderRadius: 6, fontSize: 12, pointerEvents: "none", boxShadow: "0 8px 20px rgba(0,0,0,0.16)" }}>{valueLabel === "€" ? window.formatEUR(data[hover]) : window.formatKWh(data[hover])}</div>)}
+      {hover !== null && (<div style={{ position: "absolute", left: padL + step * hover + step / 2, transform: "translateX(-50%)", top: yAt(data[hover]) - 44, background: "var(--ink-1)", color: "white", padding: "8px 10px", borderRadius: 6, fontSize: 12, pointerEvents: "none", boxShadow: "0 8px 20px rgba(0,0,0,0.16)", whiteSpace: "nowrap" }}>{valueLabel === "€" ? window.formatEUR(data[hover]) : window.formatKWh(data[hover])}</div>)}
     </div>
   );
 }
 
-function DonutChart({ data, size = 180, thickness = 28 }) {
+function DonutChart({ data, size = 160, thickness = 26 }) {
   const total = data.reduce((s, d) => s + d.value, 0);
   const cx = size / 2, cy = size / 2;
   const r = size / 2 - thickness / 2;
@@ -756,20 +763,20 @@ function DonutChart({ data, size = 180, thickness = 28 }) {
     return { d, path: `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`, frac };
   });
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
-      <svg width={size} height={size} style={{ flexShrink: 0 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, flexWrap: "wrap" }}>
+      <svg width={size} height={size} style={{ flexShrink: 0, maxWidth: "100%" }} viewBox={`0 0 ${size} ${size}`}>
         <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--line-soft)" strokeWidth={thickness}/>
         {arcs.map((a, i) => (a.frac > 0 && <path key={i} d={a.path} fill="none" stroke={a.d.color} strokeWidth={thickness} strokeLinecap="butt"/>))}
         <text x={cx} y={cy - 4} textAnchor="middle" fontSize="22" fontWeight="500" fill="var(--ink-1)" style={{ fontFamily: "var(--serif)" }}>{total}</text>
         <text x={cx} y={cy + 14} textAnchor="middle" fontSize="10" fill="var(--ink-3)" letterSpacing="1.4">SUMINISTROS</text>
       </svg>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0, flex: 1 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0, flex: "1 1 140px" }}>
         {data.map((d, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, minWidth: 0 }}>
             <span style={{ width: 10, height: 10, background: d.color, borderRadius: 2, flexShrink: 0 }}></span>
-            <span style={{ flex: 1, color: "var(--ink-2)" }}>{d.label}</span>
-            <span style={{ fontVariantNumeric: "tabular-nums", color: "var(--ink-1)", fontWeight: 500 }}>{d.value}</span>
-            <span style={{ color: "var(--ink-3)", fontVariantNumeric: "tabular-nums", minWidth: 38, textAlign: "right" }}>{total > 0 ? ((d.value / total) * 100).toFixed(0) : 0}%</span>
+            <span style={{ flex: 1, color: "var(--ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{d.label}</span>
+            <span style={{ fontVariantNumeric: "tabular-nums", color: "var(--ink-1)", fontWeight: 500, flexShrink: 0 }}>{d.value}</span>
+            <span style={{ color: "var(--ink-3)", fontVariantNumeric: "tabular-nums", flexShrink: 0, fontSize: 12 }}>{total > 0 ? ((d.value / total) * 100).toFixed(0) : 0}%</span>
           </div>
         ))}
       </div>
@@ -932,7 +939,9 @@ function Dashboard({ comunidadFilter, onNav, onOpenInvoice }) {
       <div className="ads-grid-2-1">
         <Card>
           <CardHeader title="Coste mensual" subtitle="Importe facturado por periodo"/>
-          <BarChart data={costeMensualCY.map(v => v ?? 0)} height={260} valueLabel="€"/>
+          <div style={{ flex: 1, display: "flex", minHeight: 260 }}>
+            <BarChart data={costeMensualCY.map(v => v ?? 0)} height={260} valueLabel="€" fill/>
+          </div>
         </Card>
         <Card>
           <CardHeader title="Top suministros" subtitle="Mayor consumo anual"/>
