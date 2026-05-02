@@ -246,6 +246,131 @@ function getAaffKey() {
   return (params.get("key") || "").trim();
 }
 
+// ─── Notificaciones sintéticas ──────────────────────────────────────
+// Se derivan en cliente desde CONTRATOS y FACTURAS (ya cargados desde la API).
+// Estado "leída" persiste en localStorage por aaff_key.
+const NOTIF_READ_PREFIX = "ads:notif:read:";
+
+function loadReadIds(aaffKey) {
+  try {
+    const raw = localStorage.getItem(NOTIF_READ_PREFIX + aaffKey);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch (_) { return new Set(); }
+}
+
+function saveReadIds(aaffKey, set) {
+  try { localStorage.setItem(NOTIF_READ_PREFIX + aaffKey, JSON.stringify([...set])); } catch (_) {}
+}
+
+function markNotifRead(id) {
+  const aaffKey = getAaffKey();
+  const set = loadReadIds(aaffKey);
+  if (set.has(id)) return;
+  set.add(id);
+  saveReadIds(aaffKey, set);
+  // Actualiza el array en memoria para que el render refleje el cambio
+  const n = (window.NOTIFICACIONES || []).find(x => x.id === id);
+  if (n) n.leida = true;
+}
+
+function daysBetween(isoDate, ref) {
+  if (!isoDate || isoDate === "0000-00-00" || isoDate === "1900-01-01") return null;
+  const d = new Date(isoDate);
+  if (isNaN(d)) return null;
+  return Math.floor((ref - d) / 86400000);
+}
+
+function buildNotificaciones({ FACTURAS, CONTRATOS, COMUNIDADES, aaffKey }) {
+  const today = new Date();
+  const readIds = loadReadIds(aaffKey);
+  const comunidadById = Object.fromEntries((COMUNIDADES || []).map(c => [c.id, c]));
+  const out = [];
+
+  // 1) Facturas emitidas en últimos 5 días
+  for (const f of FACTURAS || []) {
+    const age = daysBetween(f.fechaEmision, today);
+    if (age === null || age < 0 || age > 5) continue;
+    const com = comunidadById[f.comunidadId];
+    const lugar = com?.nombre || f.alias || f.cups || "";
+    out.push({
+      id: `factura-nueva-${f.id}`,
+      tipo: "factura",
+      titulo: "Nueva factura disponible",
+      descripcion: `Factura ${f.numero || ""}${lugar ? " — " + lugar : ""}${f.importe ? " · " + window.formatEUR(f.importe) : ""}`,
+      fecha: f.fechaEmision,
+    });
+  }
+
+  // 2) Facturas vencidas (impagadas)
+  for (const f of FACTURAS || []) {
+    if (f.estado !== "vencida") continue;
+    const com = comunidadById[f.comunidadId];
+    const lugar = com?.nombre || f.alias || f.cups || "";
+    out.push({
+      id: `factura-vencida-${f.id}`,
+      tipo: "alerta",
+      titulo: "Factura impagada",
+      descripcion: `Factura ${f.numero || ""}${lugar ? " — " + lugar : ""} pendiente de pago${f.importe ? " · " + window.formatEUR(f.importe) : ""}`,
+      fecha: f.fechaVencimiento || f.fechaEmision || "",
+    });
+  }
+
+  // 3) Contratos activados (fechaActivacion en últimos 5 días)
+  for (const c of CONTRATOS || []) {
+    if (c.estado !== "activo") continue;
+    const age = daysBetween(c.fechaActivacion, today);
+    if (age === null || age < 0 || age > 5) continue;
+    const com = comunidadById[c.comunidadId];
+    const lugar = com?.nombre || c.alias || c.cups || "";
+    out.push({
+      id: `contrato-alta-${c.id}`,
+      tipo: "contrato",
+      titulo: "Nuevo contrato activo",
+      descripcion: `Contrato ${c.numero || ""}${lugar ? " — " + lugar : ""} activado`,
+      fecha: c.fechaActivacion,
+    });
+  }
+
+  // 4) Contratos dados de baja (finalizado en últimos 10 días)
+  for (const c of CONTRATOS || []) {
+    if (c.estado !== "finalizado") continue;
+    const age = daysBetween(c.fechaBaja, today);
+    if (age === null || age < 0 || age > 10) continue;
+    const com = comunidadById[c.comunidadId];
+    const lugar = com?.nombre || c.alias || c.cups || "";
+    out.push({
+      id: `contrato-baja-${c.id}`,
+      tipo: "alerta",
+      titulo: "Contrato dado de baja",
+      descripcion: `Contrato ${c.numero || ""}${lugar ? " — " + lugar : ""} finalizado`,
+      fecha: c.fechaBaja,
+    });
+  }
+
+  // 5) Contratos próximos a renovar (fechaFin en próximos 30 días)
+  for (const c of CONTRATOS || []) {
+    if (c.estado !== "activo") continue;
+    const age = daysBetween(c.fechaFin, today); // negativo = futuro
+    if (age === null || age > 0 || age < -30) continue;
+    const com = comunidadById[c.comunidadId];
+    const lugar = com?.nombre || c.alias || c.cups || "";
+    out.push({
+      id: `contrato-renovar-${c.id}`,
+      tipo: "vencimiento",
+      titulo: "Contrato próximo a renovar",
+      descripcion: `Contrato ${c.numero || ""}${lugar ? " — " + lugar : ""} vence en ${Math.abs(age)} días`,
+      fecha: c.fechaFin,
+    });
+  }
+
+  // Marcar leídas + ordenar por fecha desc
+  for (const n of out) n.leida = readIds.has(n.id);
+  out.sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
+  return out;
+}
+
+window.markNotifRead = markNotifRead;
+
 async function bootstrapData() {
   const aaffKey = getAaffKey();
   if (!aaffKey) {
@@ -327,7 +452,7 @@ async function bootstrapData() {
   }));
 
   const TARIFAS = [...new Set(SUMINISTROS.map(s=>s.tarifa).filter(Boolean))].sort();
-  const NOTIFICACIONES = []; // pendiente: webhooks Nemon
+  const NOTIFICACIONES = buildNotificaciones({ FACTURAS, CONTRATOS, COMUNIDADES, aaffKey });
 
   Object.assign(window, {
     ADMIN, COMUNIDADES, SUMINISTROS, CONTRATOS, FACTURAS, NOTIFICACIONES, TARIFAS,
@@ -1429,6 +1554,12 @@ function InvoiceModal({ facturaId, onClose }) {
 
 function NotificacionesView() {
   const [filter, setFilter] = React.useState("todas");
+  const [, force] = React.useState(0);
+  const handleClick = (n) => {
+    if (n.leida) return;
+    window.markNotifRead(n.id);
+    force(x => x + 1);
+  };
   const list = window.NOTIFICACIONES.filter(n => filter === "todas" || (filter === "noleidas" && !n.leida));
   return (
     <div className="ads-page">
@@ -1441,7 +1572,7 @@ function NotificacionesView() {
         {list.length === 0 ? (
           <Empty title="Aún no hay notificaciones" description="Aquí aparecerán los avisos de nuevas facturas, vencimientos e impagos cuando estén disponibles"/>
         ) : list.map((n) => (
-          <div key={n.id} className={`ads-notif-row ${!n.leida ? "unread" : ""}`}>
+          <div key={n.id} className={`ads-notif-row ${!n.leida ? "unread" : ""}`} onClick={() => handleClick(n)} style={{ cursor: n.leida ? "default" : "pointer" }}>
             <span className={`ads-notif-dot ads-notif-${n.tipo}`}>{n.tipo === "alerta" || n.tipo === "vencimiento" ? <Icon.alert/> : n.tipo === "factura" ? <Icon.invoice/> : n.tipo === "contrato" ? <Icon.contract/> : <Icon.bell/>}</span>
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
