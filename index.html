@@ -1024,9 +1024,20 @@ function ContratoDetalle({ contratoId, onBack, onOpenInvoice }) {
   });
 
   const tienePrecios = c.precioEnergia && c.precioEnergia.p1 != null;
-  const consumoFacturadoYTD = window.FACTURAS
-    .filter(f => f.suministroId === s?.id && f.year === today.getFullYear())
-    .reduce((acc, f) => acc + (f.consumoKwh || 0), 0);
+
+  // Métricas derivadas de las facturas (info que NO está en "Datos del contrato")
+  const fact12m = facturasContrato.filter(f => {
+    if (!f.fechaEmision) return false;
+    const fd = new Date(f.fechaEmision);
+    const limite = new Date(today.getFullYear(), today.getMonth() - 12, today.getDate());
+    return fd >= limite;
+  });
+  const consumo12mTotal = fact12m.reduce((acc, f) => acc + (f.consumoKwh || 0), 0);
+  const importe12mTotal = fact12m.reduce((acc, f) => acc + (f.importe || 0), 0);
+  const costeMedioKwh = consumo12mTotal > 0 ? importe12mTotal / consumo12mTotal : null;
+  const facturasPendientes = facturasContrato.filter(f => f.estado === "pendiente" || f.estado === "vencida");
+  const importePendiente = facturasPendientes.reduce((acc, f) => acc + (f.importe || 0), 0);
+  const ultimaFactura = facturasContrato[0]; // ya están ordenadas desc por fechaEmision
   const diasVencimiento = c.fechaFin
     ? Math.ceil((new Date(c.fechaFin) - today) / 86400000)
     : null;
@@ -1063,10 +1074,11 @@ function ContratoDetalle({ contratoId, onBack, onOpenInvoice }) {
           ) : (
             <>
               <dl className="ads-dl">
-                <div><dt>Producto</dt><dd>{c.modalidad || "—"}</dd></div>
-                <div><dt>Tipo de energía</dt><dd>{c.energia || "—"}</dd></div>
-                <div><dt>Consumo anual estimado</dt><dd>{s?.consumoAnual ? window.formatKWh(s.consumoAnual) : "—"}</dd></div>
-                <div><dt>Consumo facturado YTD</dt><dd>{consumoFacturadoYTD ? window.formatKWh(consumoFacturadoYTD) : "—"}</dd></div>
+                <div><dt>Consumo facturado (12m)</dt><dd>{consumo12mTotal ? window.formatKWh(consumo12mTotal) : "—"}</dd></div>
+                <div><dt>Importe facturado (12m)</dt><dd>{importe12mTotal ? window.formatEUR(importe12mTotal) : "—"}</dd></div>
+                <div><dt>Coste medio efectivo</dt><dd>{costeMedioKwh != null ? `${window.formatNum(costeMedioKwh, 4)} €/kWh` : "—"}</dd></div>
+                <div><dt>Pendiente de pago</dt><dd style={{ color: importePendiente > 0 ? "var(--danger)" : undefined }}>{importePendiente > 0 ? `${window.formatEUR(importePendiente)} · ${facturasPendientes.length} factura${facturasPendientes.length === 1 ? "" : "s"}` : "Al día"}</dd></div>
+                <div><dt>Última factura</dt><dd>{ultimaFactura ? `${window.formatFecha(ultimaFactura.fechaEmision)} · ${window.formatEUR(ultimaFactura.importe)}` : "—"}</dd></div>
                 <div><dt>Días hasta vencimiento</dt><dd>{diasVencimiento == null ? "—" : (diasVencimiento < 0 ? "Vencido" : `${diasVencimiento} días`)}</dd></div>
               </dl>
               <div style={{ marginTop: 16, padding: 14, background: "var(--bg-soft)", borderRadius: 8, fontSize: 12, color: "var(--ink-2)", lineHeight: 1.55 }}>
