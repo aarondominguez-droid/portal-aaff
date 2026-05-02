@@ -179,6 +179,11 @@ button.ads-kpi:hover { border-color: var(--gold-soft); transform: translateY(-1p
 .ads-loading-screen, .ads-error-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; background: var(--bg); position: relative; z-index: 1; }
 .ads-loading-spinner { width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--gold-deep); animation: spin 800ms linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.ads-nav-spinner { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--line); border-top-color: var(--ink-3); animation: spin 700ms linear infinite; vertical-align: middle; }
+.ads-skeleton { background: linear-gradient(90deg, var(--bg-soft) 0%, var(--line) 50%, var(--bg-soft) 100%); background-size: 200% 100%; animation: skel 1.2s ease-in-out infinite; border-radius: 6px; }
+@keyframes skel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.ads-skeleton-row { height: 14px; }
+.ads-skeleton-block { height: 18px; }
 .ads-loading-msg { font-family: var(--serif); font-size: 18px; color: var(--ink-2); }
 .ads-error-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--danger-bg); color: var(--danger); display: flex; align-items: center; justify-content: center; }
 .ads-error-title { font-family: var(--serif); font-size: 24px; color: var(--ink-1); margin: 0; }
@@ -606,11 +611,12 @@ function Sidebar({ current, onNav, comunidadFilter, setComunidadFilter }) {
     if (n.has(k)) n.delete(k); else n.add(k);
     return n;
   });
+  const facturasLoading = !!window.FACTURAS_LOADING;
   const items = [
     { id: "dashboard",      label: "Dashboard",      icon: Icon.dashboard },
     { id: "contratos",      label: "Contratos",      icon: Icon.contract, badge: window.CONTRATOS.filter(c=>c.estado!=="activo" && c.estado!=="aceptado").length || 0 },
-    { id: "facturas",       label: "Facturas",       icon: Icon.invoice,  badge: window.FACTURAS.filter(f=>f.estado==="vencida"||f.estado==="pendiente").length || 0 },
-    { id: "notificaciones", label: "Notificaciones", icon: Icon.bell,     badge: window.NOTIFICACIONES.filter(n=>!n.leida).length || 0 },
+    { id: "facturas",       label: "Facturas",       icon: Icon.invoice,  badge: window.FACTURAS.filter(f=>f.estado==="vencida"||f.estado==="pendiente").length || 0, loading: facturasLoading },
+    { id: "notificaciones", label: "Notificaciones", icon: Icon.bell,     badge: window.NOTIFICACIONES.filter(n=>!n.leida).length || 0, loading: facturasLoading },
   ];
   const comunidadesFiltradas = React.useMemo(() => {
     const q = comunidadQuery.trim().toLowerCase();
@@ -628,7 +634,10 @@ function Sidebar({ current, onNav, comunidadFilter, setComunidadFilter }) {
         <div className="ads-nav-section">PRINCIPAL</div>
         {items.map(it => (
           <button key={it.id} className={`ads-nav-item ${current === it.id ? "active" : ""}`} onClick={() => onNav(it.id)}>
-            <it.icon/><span>{it.label}</span>{it.badge ? <span className="ads-nav-badge">{it.badge}</span> : null}
+            <it.icon/><span>{it.label}</span>
+            {it.loading
+              ? <span className="ads-nav-spinner" title="Cargando…"></span>
+              : (it.badge ? <span className="ads-nav-badge">{it.badge}</span> : null)}
           </button>
         ))}
         <div className="ads-nav-section" style={{ marginTop: 22 }}>CARTERA</div>
@@ -1397,10 +1406,11 @@ function FacturasView({ comunidadFilter, onOpenInvoice }) {
   const [search, setSearch] = React.useState("");
   const [estadoFilter, setEstadoFilter] = React.useState("todos");
   const [yearFilter, setYearFilter] = React.useState("todos");
+  const facturasLoading = !!window.FACTURAS_LOADING;
 
   const yearsAvailable = React.useMemo(() => {
     return [...new Set(window.FACTURAS.map(f => f.year).filter(Boolean))].sort((a,b)=>b-a);
-  }, []);
+  }, [facturasLoading]);
 
   const facturas = React.useMemo(() => {
     let list = window.FACTURAS.map(f => ({ ...f, suministro: window.getSuministro(f.suministroId), comunidad: window.getComunidad(f.comunidadId) }));
@@ -1425,10 +1435,10 @@ function FacturasView({ comunidadFilter, onOpenInvoice }) {
         <button className="ads-btn ads-btn-ghost"><Icon.download/>Exportar selección</button>
       </PageHeader>
       <div className="ads-summary-strip">
-        <div><span>Facturas</span><b>{facturas.length}</b></div>
-        <div><span>Importe total</span><b>{window.formatEUR(totalImporte)}</b></div>
-        <div><span>Consumo total</span><b>{window.formatKWh(totalConsumo)}</b></div>
-        <div><span style={{ color: pendientes > 0 ? "var(--danger)" : undefined }}>Pendiente</span><b style={{ color: pendientes > 0 ? "var(--danger)" : undefined }}>{window.formatEUR(pendientes)}</b></div>
+        <div><span>Facturas</span>{facturasLoading ? <div className="ads-skeleton ads-skeleton-block" style={{ width: 60, marginTop: 4 }}/> : <b>{facturas.length}</b>}</div>
+        <div><span>Importe total</span>{facturasLoading ? <div className="ads-skeleton ads-skeleton-block" style={{ width: 110, marginTop: 4 }}/> : <b>{window.formatEUR(totalImporte)}</b>}</div>
+        <div><span>Consumo total</span>{facturasLoading ? <div className="ads-skeleton ads-skeleton-block" style={{ width: 110, marginTop: 4 }}/> : <b>{window.formatKWh(totalConsumo)}</b>}</div>
+        <div><span style={{ color: !facturasLoading && pendientes > 0 ? "var(--danger)" : undefined }}>Pendiente</span>{facturasLoading ? <div className="ads-skeleton ads-skeleton-block" style={{ width: 110, marginTop: 4 }}/> : <b style={{ color: pendientes > 0 ? "var(--danger)" : undefined }}>{window.formatEUR(pendientes)}</b>}</div>
       </div>
       <div className="ads-toolbar">
         <div style={{ position: "relative", flex: 1, maxWidth: 360 }}>
@@ -1447,27 +1457,43 @@ function FacturasView({ comunidadFilter, onOpenInvoice }) {
         <table className="ads-table">
           <thead><tr><th style={{ width: 160 }}>Nº Factura</th><th>Suministro</th><th style={{ width: 130 }}>Periodo</th><th style={{ width: 110 }}>Emisión</th><th style={{ width: 120, textAlign: "right" }}>Consumo</th><th style={{ width: 120, textAlign: "right" }}>Importe</th><th style={{ width: 110 }}>Estado</th><th style={{ width: 90 }}></th></tr></thead>
           <tbody>
-            {facturas.slice(0, 80).map(f => (
-              <tr key={f.id} onClick={() => onOpenInvoice(f.id)} className="ads-row-clickable">
-                <td style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--ink-2)" }}>{f.numero || f.id}</td>
-                <td>
-                  <div style={{ fontWeight: 500, color: "var(--ink-1)" }}>{f.suministro?.alias || f.alias || "—"}</div>
-                  <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2 }}>{f.comunidad?.nombre || f.comunidadNombre || "—"}</div>
-                </td>
-                <td style={{ fontSize: 13 }}>{f.periodo}</td>
-                <td style={{ color: "var(--ink-3)", fontSize: 13 }}>{window.formatFecha(f.fechaEmision)}</td>
-                <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{window.formatNum(f.consumoKwh)} kWh</td>
-                <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 500, color: "var(--ink-1)" }}>{window.formatEUR(f.importe)}</td>
-                <td><StatusBadge estado={f.estado}/></td>
-                <td>
-                  <button className="ads-icon-btn-sm" onClick={(e) => { e.stopPropagation(); onOpenInvoice(f.id); }} title="Ver factura"><Icon.download/></button>
-                </td>
-              </tr>
-            ))}
+            {facturasLoading
+              ? Array.from({ length: 8 }).map((_, i) => (
+                <tr key={`sk-${i}`}>
+                  <td><div className="ads-skeleton ads-skeleton-row" style={{ width: 110 }}/></td>
+                  <td>
+                    <div className="ads-skeleton ads-skeleton-row" style={{ width: "70%" }}/>
+                    <div className="ads-skeleton ads-skeleton-row" style={{ width: "45%", marginTop: 4, height: 10 }}/>
+                  </td>
+                  <td><div className="ads-skeleton ads-skeleton-row" style={{ width: 90 }}/></td>
+                  <td><div className="ads-skeleton ads-skeleton-row" style={{ width: 80 }}/></td>
+                  <td><div className="ads-skeleton ads-skeleton-row" style={{ width: 80, marginLeft: "auto" }}/></td>
+                  <td><div className="ads-skeleton ads-skeleton-row" style={{ width: 70, marginLeft: "auto" }}/></td>
+                  <td><div className="ads-skeleton ads-skeleton-row" style={{ width: 70, height: 18, borderRadius: 12 }}/></td>
+                  <td><div className="ads-skeleton ads-skeleton-row" style={{ width: 24, height: 24, borderRadius: 6 }}/></td>
+                </tr>
+              ))
+              : facturas.slice(0, 80).map(f => (
+                <tr key={f.id} onClick={() => onOpenInvoice(f.id)} className="ads-row-clickable">
+                  <td style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--ink-2)" }}>{f.numero || f.id}</td>
+                  <td>
+                    <div style={{ fontWeight: 500, color: "var(--ink-1)" }}>{f.suministro?.alias || f.alias || "—"}</div>
+                    <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2 }}>{f.comunidad?.nombre || f.comunidadNombre || "—"}</div>
+                  </td>
+                  <td style={{ fontSize: 13 }}>{f.periodo}</td>
+                  <td style={{ color: "var(--ink-3)", fontSize: 13 }}>{window.formatFecha(f.fechaEmision)}</td>
+                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{window.formatNum(f.consumoKwh)} kWh</td>
+                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 500, color: "var(--ink-1)" }}>{window.formatEUR(f.importe)}</td>
+                  <td><StatusBadge estado={f.estado}/></td>
+                  <td>
+                    <button className="ads-icon-btn-sm" onClick={(e) => { e.stopPropagation(); onOpenInvoice(f.id); }} title="Ver factura"><Icon.download/></button>
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
-        {facturas.length === 0 && <Empty description="Sin facturas que coincidan con los filtros"/>}
-        {facturas.length > 80 && <div style={{ padding: 14, textAlign: "center", color: "var(--ink-3)", fontSize: 12, borderTop: "1px solid var(--line)" }}>Mostrando 80 de {facturas.length} facturas</div>}
+        {!facturasLoading && facturas.length === 0 && <Empty description="Sin facturas que coincidan con los filtros"/>}
+        {!facturasLoading && facturas.length > 80 && <div style={{ padding: 14, textAlign: "center", color: "var(--ink-3)", fontSize: 12, borderTop: "1px solid var(--line)" }}>Mostrando 80 de {facturas.length} facturas</div>}
       </div>
     </div>
   );
