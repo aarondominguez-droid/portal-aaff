@@ -430,8 +430,21 @@ function shortenComunidad(nombre) {
   return s.trim() || nombre;
 }
 
+function comunidadParts(nombre) {
+  const base = shortenComunidad(nombre);
+  const m = base.match(/^(.*?)\s+(\d[\d\s\-\/]*)$/);
+  if (m && m[1].trim()) return { groupKey: m[1].trim().toUpperCase(), groupLabel: m[1].trim(), suffix: m[2].trim() };
+  return { groupKey: base.toUpperCase(), groupLabel: base, suffix: "" };
+}
+
 function Sidebar({ current, onNav, comunidadFilter, setComunidadFilter }) {
   const [comunidadQuery, setComunidadQuery] = React.useState("");
+  const [openGroups, setOpenGroups] = React.useState(() => new Set());
+  const toggleGroup = (k) => setOpenGroups(prev => {
+    const n = new Set(prev);
+    if (n.has(k)) n.delete(k); else n.add(k);
+    return n;
+  });
   const items = [
     { id: "dashboard",      label: "Dashboard",      icon: Icon.dashboard },
     { id: "contratos",      label: "Contratos",      icon: Icon.contract, badge: window.CONTRATOS.filter(c=>c.estado!=="activo" && c.estado!=="aceptado").length || 0 },
@@ -471,17 +484,62 @@ function Sidebar({ current, onNav, comunidadFilter, setComunidadFilter }) {
             style={{ paddingLeft: 36, height: 32, fontSize: 12, width: "100%" }}
           />
         </div>
-        {comunidadesFiltradas.map(c => {
-          const corto = shortenComunidad(c.nombre);
-          const tip = c.nombre + (c.direccion ? ` · ${c.direccion}` : "");
-          return (
-            <button key={c.id} className={`ads-nav-item ads-nav-sub ${comunidadFilter === c.id ? "active" : ""}`} onClick={() => setComunidadFilter(c.id)} title={tip}>
-              <span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--gold)", flexShrink: 0, marginLeft: 4 }}></span>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{corto}</span>
-              <span className="ads-nav-count">{c.suministros}</span>
-            </button>
-          );
-        })}
+        {(() => {
+          const map = new Map();
+          for (const c of comunidadesFiltradas) {
+            const p = comunidadParts(c.nombre);
+            if (!map.has(p.groupKey)) map.set(p.groupKey, { key: p.groupKey, label: p.groupLabel, items: [] });
+            map.get(p.groupKey).items.push({ ...c, suffix: p.suffix });
+          }
+          const grupos = [...map.values()];
+          const forceOpen = comunidadQuery.trim() !== "";
+          return grupos.map(g => {
+            if (g.items.length === 1) {
+              const c = g.items[0];
+              const corto = shortenComunidad(c.nombre);
+              const tip = c.nombre + (c.direccion ? ` · ${c.direccion}` : "");
+              return (
+                <button key={c.id} className={`ads-nav-item ads-nav-sub ${comunidadFilter === c.id ? "active" : ""}`} onClick={() => setComunidadFilter(c.id)} title={tip}>
+                  <span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--gold)", flexShrink: 0, marginLeft: 4 }}></span>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{corto}</span>
+                  <span className="ads-nav-count">{c.suministros}</span>
+                </button>
+              );
+            }
+            const hasActive = g.items.some(c => c.id === comunidadFilter);
+            const isOpen = forceOpen || hasActive || openGroups.has(g.key);
+            return (
+              <React.Fragment key={g.key}>
+                <button
+                  className="ads-nav-item ads-nav-sub"
+                  onClick={() => toggleGroup(g.key)}
+                  title={g.label}
+                  style={{ fontWeight: 500 }}
+                >
+                  <span style={{ display: "inline-block", width: 12, fontSize: 10, color: "var(--ink-3)", flexShrink: 0, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>▸</span>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.label}</span>
+                  <span className="ads-nav-count">{g.items.length}</span>
+                </button>
+                {isOpen && g.items.map(c => {
+                  const tip = c.nombre + (c.direccion ? ` · ${c.direccion}` : "");
+                  return (
+                    <button
+                      key={c.id}
+                      className={`ads-nav-item ads-nav-sub ${comunidadFilter === c.id ? "active" : ""}`}
+                      onClick={() => setComunidadFilter(c.id)}
+                      title={tip}
+                      style={{ paddingLeft: 36 }}
+                    >
+                      <span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--gold)", flexShrink: 0 }}></span>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.suffix || c.nombre}</span>
+                      <span className="ads-nav-count">{c.suministros}</span>
+                    </button>
+                  );
+                })}
+              </React.Fragment>
+            );
+          });
+        })()}
         {comunidadesFiltradas.length === 0 && (
           <div style={{ padding: "10px 14px", fontSize: 12, color: "var(--ink-3)" }}>Sin resultados</div>
         )}
